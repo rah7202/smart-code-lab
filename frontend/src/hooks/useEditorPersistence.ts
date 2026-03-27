@@ -169,10 +169,10 @@ export function useEditorPersistence({
         const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
         const filename = `${username}-${timestamp}.${ext[userLang] ?? "txt"}`;
         const blob = new Blob([userCode], { type: "text/plain" });
-        const url = URL.createObjectURL(blob);
+        const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url; a.download = filename; a.click();
-        URL.revokeObjectURL(url);
+        window.URL.revokeObjectURL(url);
         toast.success(`Downloaded ${filename}`);
     };
 
