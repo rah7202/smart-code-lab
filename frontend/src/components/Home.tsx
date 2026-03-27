@@ -49,7 +49,7 @@ export default function Home() {
                 </div>
             </div>
             <div className="absolute bottom-0 left-1/2 right-1/2 mb-1">
-                <Footer URL="https://github.com/rah7202" size={22} />
+                <Footer URL="https://github.com/rah7202/smart-code-lab" size={22} />
             </div>
 
         </div>
