@@ -15,7 +15,7 @@ interface UseCollaborationProps {
     isRemoteUpdate: React.MutableRefObject<boolean>;
 }
 
-export function useCollaboration({ roomId, username, onCodeChange, setUserLang, isRemoteUpdate }: UseCollaborationProps) {
+export function useCollaboration({ roomId, username, onCodeChange, isRemoteUpdate }: UseCollaborationProps) {
     const [users, setUsers] = useState<User[]>([]);
     const myColor = useRef<string>("#ffffff");
     const editorRef = useRef<any>(null);
@@ -36,7 +36,7 @@ export function useCollaboration({ roomId, username, onCodeChange, setUserLang, 
             console.log("socket connection failed", err.message);
         })
 
-        socket.on("content-edited", ({ code, language }: { code: string, language: string }) => {
+        socket.on("content-edited", ({ code }: { code: string }) => {
             // Change this:
             // if (!code || code.trim() === "") return; 
 
