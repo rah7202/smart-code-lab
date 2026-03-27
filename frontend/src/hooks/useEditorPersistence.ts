@@ -121,6 +121,9 @@ export function useEditorPersistence({
 
     // ── Save snapshot ─────────────────────────────────────────────────────────
     const handleSaveCode = async () => {
+
+        if (!userCode) { toast.error("No code to save"); return; }
+
         try {
             await axios.post(`${URL}/snapshot/${roomId}`, {
                 code: userCode,
