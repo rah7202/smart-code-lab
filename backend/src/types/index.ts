@@ -1,0 +1,47 @@
+//-----------------SOCKET TYPES---------------------------
+
+export type User = {
+    socketId: string;
+    username: string;
+    color: string;
+};
+
+export type JoinRoomPayload = {
+    RoomId: string;
+    username: string;
+};
+
+export type CodeChangePayload = {
+    roomId: string;
+    code: string;
+};
+
+//-----------------JUDGE0 TYPES---------------------------
+
+export type CompileRequest = {
+    code: string;
+    userLangId: number;
+    input: string;
+};
+
+export type CompileResponse = {
+    output: string;
+    status: {
+        id: number;
+        description: string;
+    };
+    time: string;
+};
+
+//-----------------AI TYPES---------------------------
+
+export type AIRequest = {
+    prompt: string;
+    roomId: string;
+};
+
+export type AIResponse = {
+    success: boolean;
+    data?: string;
+    error?: string;
+};

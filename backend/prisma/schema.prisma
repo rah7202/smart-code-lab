@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Room {
+  id        String   @id @default(uuid())
+  language  String
+  code      String   @db.Text
+  createdAt DateTime @default(now())
+
+  snapshots CodeSnapshot[]
+  aiMessages  AIMessage[]
+}
+
+model CodeSnapshot {
+  id        String   @id @default(uuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id])
+
+  code      String   @db.Text
+  language  String
+  
+  createdAt DateTime @default(now())
+
+  @@index([roomId])
+}
+
+model AIMessage {
+  id        String   @id @default(uuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id])
+
+  role      String   // "user" | "ai"
+  content   String   @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([roomId])
+}
