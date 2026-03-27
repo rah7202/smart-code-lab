@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import { socket } from "../socket";
 import { getLanguageByValue } from "../languageOptions";
 
-const BASE_URL = "http://localhost:8000";
+const URL = import.meta.env.VITE_BACKEND_URL;
 
 interface UseEditorPersistenceProps {
     roomId: string;
@@ -38,7 +38,7 @@ export function useEditorPersistence({
     // ── Init debounced DB save ────────────────────────────────────────────────
     useEffect(() => {
         saveRef.current = debounce((code: string, language: string) => {
-            axios.post(`${BASE_URL}/room/${roomId}/save`, { code, language });
+            axios.post(`${URL}/room/${roomId}/save`, { code, language });
         }, 2000);
         return () => saveRef.current?.cancel();
     }, [roomId]);
@@ -48,7 +48,7 @@ export function useEditorPersistence({
         if (!roomId) return;
         const load = async () => {
             try {
-                const res = await axios.get(`${BASE_URL}/room/${roomId}`);
+                const res = await axios.get(`${URL}/room/${roomId}`);
                 const lang = res.data.language || "javascript";
                 const code = res.data.code || getLanguageByValue(lang).starterCode;
 
@@ -83,7 +83,7 @@ export function useEditorPersistence({
     useEffect(() => {
         const handleBeforeLeave = () => {
             navigator.sendBeacon(
-                `${BASE_URL}/snapshot/${roomId}`,
+                `${URL}/snapshot/${roomId}`,
                 JSON.stringify({ code: userCode, language: userLang })
             );
         };
@@ -110,7 +110,7 @@ export function useEditorPersistence({
         socket.emit("content-edited", { code: newCode, language: newLang });
 
         try {
-            await axios.post(`${BASE_URL}/room/${roomId}/save`, {
+            await axios.post(`${URL}/room/${roomId}/save`, {
                 code: newCode,
                 language: newLang,
             });
@@ -122,7 +122,7 @@ export function useEditorPersistence({
     // ── Save snapshot ─────────────────────────────────────────────────────────
     const handleSaveCode = async () => {
         try {
-            await axios.post(`${BASE_URL}/snapshot/${roomId}`, {
+            await axios.post(`${URL}/snapshot/${roomId}`, {
                 code: userCode,
                 language: userLang,
             });
@@ -144,7 +144,7 @@ export function useEditorPersistence({
         isLanguageSwitching.current = false;
 
         socket.emit("content-edited", { code, language });
-        axios.post(`${BASE_URL}/room/${roomId}/save`, { code, language });
+        axios.post(`${URL}/room/${roomId}/save`, { code, language });
         setRefreshHistory(prev => prev + 1);
         toast.success("Snapshot restored");
     };
@@ -157,7 +157,7 @@ export function useEditorPersistence({
         isLanguageSwitching.current = false;
 
         socket.emit("content-edited", { code: "", language: userLang });
-        axios.post(`${BASE_URL}/room/${roomId}/save`, { code: "", language: userLang });
+        axios.post(`${URL}/room/${roomId}/save`, { code: "", language: userLang });
     };
 
     // ── Download ──────────────────────────────────────────────────────────────

@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import axios from "axios";
 import geminiLogo from "../assets/geminiLogo.png";
 
-const BASE_URL = "http://localhost:8000";
+const URL = import.meta.env.VITE_BACKEND_URL;
 
 interface Message {
     role: "user" | "assistant";
@@ -49,7 +49,7 @@ export default function AIPanel({
 
     const handleClearChat = async () => {
         try {
-            await axios.delete(`${BASE_URL}/ai/history/${roomId}`);
+            await axios.delete(`${URL}/ai/history/${roomId}`);
             setHistory([]);
             toast.success("Chat cleared");
         } catch {

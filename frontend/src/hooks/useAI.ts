@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 
-const URL = "http://localhost:8000";
+const URL = import.meta.env.VITE_BACKEND_URL;
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW = 60_000;
 

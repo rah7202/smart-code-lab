@@ -17,7 +17,7 @@ import Footer from "./Footer";
 import RightPanel from "./RightPanel";
 import SelectionToolbar from "./SelectionToolbar";
 
-const BASE_URL = "http://localhost:8000";
+const URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function EditorPage() {
     const { roomId } = useParams();
@@ -83,12 +83,12 @@ export default function EditorPage() {
     const runCode = async () => {
         setIsRunning(true);
         try {
-            const res = await axios.post(`${BASE_URL}/compile`, {
+            const res = await axios.post(`${URL}/compile`, {
                 code: persistence.userCode,
                 userLangId,
                 input: userInput,
             });
-            await axios.post(`${BASE_URL}/snapshot/${roomId}`, {
+            await axios.post(`${URL}/snapshot/${roomId}`, {
                 code: persistence.userCode,
                 language: userLang,
             });
@@ -198,7 +198,7 @@ export default function EditorPage() {
                 />
             </div>
             <div className="border-t border-white/10 mt-2">
-                <Footer URL="https://github.com/rah7202" size={22} />
+                <Footer URL="https://github.com/rah7202/smart-code-lab" size={22} />
             </div>
         </div>
     );

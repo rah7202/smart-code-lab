@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-const URL = "http://localhost:8000";
+const URL = import.meta.env.VITE_BACKEND_URL;
 
 interface Snapshot {
     id: string;
