@@ -163,15 +163,20 @@ export function useEditorPersistence({
     // ── Download ──────────────────────────────────────────────────────────────
     const handleDownloadCode = () => {
         if (!userCode) { toast.error("No code to download"); return; }
+
         const ext: Record<string, string> = {
             javascript: "js", python: "py", cpp: "cpp", c: "c",
         };
+
         const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
         const filename = `${username}-${timestamp}.${ext[userLang] ?? "txt"}`;
         const blob = new Blob([userCode], { type: "text/plain" });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url; a.download = filename; a.click();
+
+        a.href = url;
+        a.download = filename;
+        a.click();
         window.URL.revokeObjectURL(url);
         toast.success(`Downloaded ${filename}`);
     };
