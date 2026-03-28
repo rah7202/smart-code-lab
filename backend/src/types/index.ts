@@ -1,3 +1,6 @@
+//-----------------LOGGER TYPES---------------------------
+export type Level = "debug" | "info" | "warn" | "error";
+
 //-----------------SOCKET TYPES---------------------------
 
 export type User = {
