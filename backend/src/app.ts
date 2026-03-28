@@ -1,4 +1,3 @@
-
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
@@ -36,7 +35,7 @@ app.use(express.text());
 
 //----------GLOBAL--RATE--LIMITING---------------------------
 const globalRateLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute,
+    windowMs: 60_1000, // 1 minute,
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
@@ -45,7 +44,7 @@ const globalRateLimiter = rateLimit({
 app.use(globalRateLimiter);
 
 //------AI--specific--tighter--rate--limit-------------------
-export const aiLimiter = rateLimit({
+export const aiRateLimiter = rateLimit({
     windowMs: 60_000,
     max: 10, // 10 AI requests per IP per minute server-side
     standardHeaders: true,
@@ -55,7 +54,7 @@ export const aiLimiter = rateLimit({
 
 //------------------ROUTES-----------------------------------
 app.use("/compile", compileRoutes);
-app.use("/ai", aiRoutes);
+app.use("/ai",aiRateLimiter, aiRoutes);
 app.use("/snapshot", snapshotRoutes);
 app.use("/room", roomRoutes);
 
