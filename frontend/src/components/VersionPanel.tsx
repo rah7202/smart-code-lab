@@ -7,7 +7,7 @@ import VersionHistory from "./VersionHistory";
 interface VersionPanelProps {
     roomId: string;
     refreshHistory: number;
-    onRestore: (snapshot: any) => void;
+    onRestore: (snapshot: { code: string, language: string}) => void;
 }
 
 export default function VersionPanel({ roomId, refreshHistory, onRestore }: VersionPanelProps) {
