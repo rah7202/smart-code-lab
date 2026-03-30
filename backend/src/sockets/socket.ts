@@ -1,6 +1,3 @@
-
-
-
 import { Server } from "socket.io";
 import { User, JoinRoomPayload, RoomPayload } from "../types";  
 import { logger } from "../utils/logger";
@@ -57,10 +54,6 @@ export const initSocket = (server: http.Server) => {
             if (content?.code) {
                 socket.emit("code-sync", content.code);
             }
-
-            // if (content?.language) {
-            //     socket.emit("language-sync", content.language);
-            // }
 
             logger.info("[SOCKET] User joined room", { socketId: socket.id, RoomId, username });
         });
