@@ -1,13 +1,10 @@
-// src/hooks/useEditorPersistence.ts
-// Owns everything related to saving/loading/restoring code from the DB.
-// EditorPage just calls this hook and gets handlers back.
-
 import { useState, useRef, useEffect, useCallback } from "react";
 import debounce from "lodash.debounce";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { socket } from "../socket";
 import { getLanguageByValue } from "../languageOptions";
+import { editor } from "monaco-editor";
 
 const URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -16,8 +13,9 @@ interface UseEditorPersistenceProps {
     username: string;
     userLang: string;
     setUserLang: (lang: string) => void;
-    editorRef: React.MutableRefObject<any>;
+    editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
     isRemoteUpdate: React.MutableRefObject<boolean>;
+    onLoad?: (code: string, lang: string) => void; // EditorPage applies imperatively
 }
 
 export function useEditorPersistence({
@@ -27,6 +25,7 @@ export function useEditorPersistence({
     setUserLang,
     editorRef,
     isRemoteUpdate,
+    onLoad,
 }: UseEditorPersistenceProps) {
 
     const [userCode, setUserCode] = useState(getLanguageByValue("javascript").starterCode);
@@ -52,16 +51,23 @@ export function useEditorPersistence({
                 const lang = res.data.language || "javascript";
                 const code = res.data.code || getLanguageByValue(lang).starterCode;
 
-                setUserLang(lang);
+                // Update React state for AI prompts, badge, etc.
                 setUserCode(code);
                 setCodeMap({ [lang]: code });
 
-                if (editorRef.current) {
-                    isRemoteUpdate.current = true;
-                    editorRef.current.setValue(code);
+                // Let EditorPage apply to Monaco imperatively (avoids race)
+                if (onLoad) {
+                    onLoad(code, lang);
+                } else {
+                    // fallback if onLoad not provided
+                    setUserLang(lang);
+                    if (editorRef.current) {
+                        isRemoteUpdate.current = true;
+                        editorRef.current.setValue(code);
+                    }
                 }
-            } catch (err) {
-                console.error("Failed to load room:", err);
+            } catch {
+                toast.error("Failed to load room data");
             }
         };
         load();
@@ -82,47 +88,22 @@ export function useEditorPersistence({
     // ── beforeunload beacon ───────────────────────────────────────────────────
     useEffect(() => {
         const handleBeforeLeave = () => {
+            
             navigator.sendBeacon(
                 `${URL}/snapshot/${roomId}`,
-                JSON.stringify({ code: userCode, language: userLang })
+                new Blob([JSON.stringify({ code: userCode, language: userLang })], 
+                        { type: "application/json" })
             );
+
         };
         window.addEventListener("beforeunload", handleBeforeLeave);
         return () => window.removeEventListener("beforeunload", handleBeforeLeave);
     }, [roomId, userCode, userLang]);
 
-    // ── Language switch — saves current lang code, restores new lang code ─────
-    const handleSetUserLang = async (newLang: string) => {
-        if (newLang === userLang) return;
-
-        const currentCode = editorRef.current?.getValue() || userCode;
-        const updatedMap = { ...codeMap, [userLang]: currentCode };
-        setCodeMap(updatedMap);
-
-        const newCode = updatedMap[newLang] ?? getLanguageByValue(newLang).starterCode;
-
-        isLanguageSwitching.current = true;
-        setUserCode(newCode);
-        setUserLang(newLang);
-        editorRef.current?.setValue(newCode);
-        isLanguageSwitching.current = false;
-
-        socket.emit("content-edited", { code: newCode, language: newLang });
-
-        try {
-            await axios.post(`${URL}/room/${roomId}/save`, {
-                code: newCode,
-                language: newLang,
-            });
-        } catch (err) {
-            console.error("Failed to save after lang switch:", err);
-        }
-    };
-
     // ── Save snapshot ─────────────────────────────────────────────────────────
     const handleSaveCode = async () => {
 
-        if (!userCode) { toast.error("No code to save"); return; }
+        if (!userCode) { toast("No Code to Save", { icon: "ℹ️" }); return; }
 
         try {
             await axios.post(`${URL}/snapshot/${roomId}`, {
@@ -153,19 +134,37 @@ export function useEditorPersistence({
     };
 
     // ── Clear editor ──────────────────────────────────────────────────────────
-    const handleClearEditor = () => {
-        isLanguageSwitching.current = true;
-        setUserCode("");
-        editorRef.current?.setValue("");
-        isLanguageSwitching.current = false;
+    const handleClearEditor = async () => {
+    const currentCode = editorRef.current?.getValue() || userCode;
 
-        socket.emit("content-edited", { code: "", language: userLang });
-        axios.post(`${URL}/room/${roomId}/save`, { code: "", language: userLang });
-    };
+    if (!currentCode || currentCode.trim() === "") {
+        toast("Nothing to clear", { icon: "ℹ️" });
+        return;
+    }
+
+    isLanguageSwitching.current = true;
+
+    setUserCode("");
+    editorRef.current?.setValue("");
+
+    isLanguageSwitching.current = false;
+
+    socket.emit("content-edited", { code: "", language: userLang });
+
+    try {
+        await axios.post(`${URL}/room/${roomId}/save`, {
+            code: "",
+            language: userLang,
+        });
+        toast.success("Editor cleared");
+    } catch {
+        toast.error("Failed to clear editor");
+    }
+};
 
     // ── Download ──────────────────────────────────────────────────────────────
     const handleDownloadCode = () => {
-        if (!userCode) { toast.error("No code to download"); return; }
+        if (!userCode) { toast("No Code to Download", { icon: "ℹ️" }); return; }
 
         const ext: Record<string, string> = {
             javascript: "js", python: "py", cpp: "cpp", c: "c",
@@ -199,7 +198,6 @@ export function useEditorPersistence({
         refreshHistory,
         bumpRefreshHistory: () => setRefreshHistory(prev => prev + 1),
         isLanguageSwitching,
-        handleSetUserLang,
         handleSaveCode,
         handleRestoreSnapshot,
         handleClearEditor,
