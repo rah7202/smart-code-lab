@@ -1,7 +1,11 @@
-
 import CodeInputPanel from "./CodeInputPanel";
 import AIPanel from "./AIPanel";
 import VersionPanel from "./VersionPanel";
+
+interface AIMessage {
+    role: "user" | "ai";
+    content: string;
+}
 
 interface RightPanelProps {
     roomId: string;
@@ -16,8 +20,8 @@ interface RightPanelProps {
 
     // AI
     mode: "code" | "selection" | "question";
-    history: any[];
-    setHistory: (v: any[]) => void;
+    history: AIMessage[];
+    setHistory: (v: AIMessage[]) => void;
     isAiThinking: boolean;
     rateCooldown: number;
     aiRequestsLeft: () => number;
@@ -25,12 +29,11 @@ interface RightPanelProps {
     setAiQuestion: (v: string) => void;
     onAnalyzeCode: () => void;
     onAskQuestion: (q: string) => void;
-    aiOutput: string;
     aiOutputRef: React.RefObject<HTMLDivElement | null>;
     bottomRef: React.RefObject<HTMLDivElement | null>;
 
     // snapshot
-    handleRestoreSnapshot: (snapshot: any) => void;
+    handleRestoreSnapshot: (snapshot: { code: string, language: string}) => void;
 }
 
 export default function RightPanel({
@@ -39,7 +42,7 @@ export default function RightPanel({
     mode, history, setHistory,
     isAiThinking, rateCooldown, aiRequestsLeft,
     aiQuestion, setAiQuestion, onAnalyzeCode, onAskQuestion,
-    aiOutput, aiOutputRef, bottomRef,
+    aiOutputRef, bottomRef,
     handleRestoreSnapshot
 }: RightPanelProps) {
     return (
@@ -66,7 +69,6 @@ export default function RightPanel({
                 aiQuestion={aiQuestion}
                 setAiQuestion={setAiQuestion}
                 onAskQuestion={onAskQuestion}
-                aiOutput={aiOutput}
                 isRunning={isRunning}
                 userOutput={userOutput}
                 aiOutputRef={aiOutputRef}

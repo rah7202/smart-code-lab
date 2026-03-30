@@ -41,8 +41,10 @@ export default function Navbar({
     const navigate = useNavigate();
     const [themeOpen, setThemeOpen] = useState(false);
     const [langOpen, setLangOpen] = useState(false);
+   
     const themeRef = useRef<HTMLDivElement>(null);
     const langRef = useRef<HTMLDivElement>(null);
+    const monacoRef = useRef<typeof import("monaco-editor") | null>(null);
 
     // CLOSE THEME DROPDOWN ON OUTSIDE CLICK
     useEffect(() => {
@@ -71,12 +73,6 @@ export default function Navbar({
         setUserLangId(lang.judge0Id);
         setLangOpen(false);
 
-        const monacoInstance = (window as any).monaco;
-        if (!monacoInstance) return;
-
-        if (userTheme === "vs-dark") {
-            monacoInstance.editor.setTheme(lang.monacoTheme);
-        }
     };
 
     const currentThemeLabel = themes.find((t) => t.value === userTheme)?.label ?? "Dark";
@@ -119,7 +115,6 @@ export default function Navbar({
                 {/* CLEAR EDITOR BUTTON*/}
                 <button
                     onClick={handleClearEditor}
-                    //className="px-3 py-1.5 text-sm bg-gray-800 border border-white/10  text-white/80 rounded-md hover:bg-gray-700  hover:border-white/20 transition-all duration-150"
                     className="flex items-center gap-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 font-semibold px-2 py-1 rounded-md cursor-pointer transition-colors text-sm"
                 >
                     <GrClearOption size={16} /> Clear
@@ -131,7 +126,6 @@ export default function Navbar({
                 {/* SAVE CODE BUTTON*/}
                 <button
                     onClick={handleSaveCode}
-                    //className="px-3 py-1.5 text-sm bg-gray-800 border border-white/10  text-white/80 rounded-md hover:bg-gray-700  hover:border-white/20 transition-all duration-150"
                     className="flex items-center gap-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 font-semibold px-2 py-1 rounded-md cursor-pointer transition-colors text-sm"
                 >
                     <FaSave size={16} /> Save
@@ -143,7 +137,6 @@ export default function Navbar({
                 {/* DOWNLOAD CODE BUTTON*/}
                 <button
                     onClick={handleDownloadCode}
-                    //className="px-3 py-1.5 text-sm bg-gray-800 border border-white/10  text-white/80 rounded-md hover:bg-gray-700  hover:border-white/20 transition-all duration-150"
                     className="flex items-center gap-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 font-semibold px-2 py-1 rounded-md cursor-pointer transition-colors text-sm"
                 >
                     <FaFileDownload size={16} /> Download Code
@@ -218,7 +211,7 @@ export default function Navbar({
                                         setUserTheme(t.value);
                                         setThemeOpen(false);
 
-                                        const monacoInstance = (window as any).monaco;
+                                        const monacoInstance = monacoRef.current;
                                         if (!monacoInstance) return;
                                         if (t.value === "light") {
                                             monacoInstance.editor.setTheme("light");
@@ -242,7 +235,6 @@ export default function Navbar({
 
                 {/* FONT SIZE SLIDER */}
                 <div className="flex items-center gap-2">
-                    {/* <span className="text-xs text-white/50">A</span> */}
                     <input
                         type="range"
                         min={12}
@@ -251,7 +243,6 @@ export default function Navbar({
                         onChange={(e) => setFontSize(Number(e.target.value))}
                         className="w-20 accent-purple-500 cursor-pointer"
                     />
-                    {/* <span className="text-xs text-white/50">A</span> */}
                     <span className="text-xs text-white/40 w-6 text-center">{fontSize}</span>
                 </div>
 
