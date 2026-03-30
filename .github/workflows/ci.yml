@@ -35,10 +35,10 @@ jobs:
           cd backend
           npm run build
 
-      # - name: Run backend tests
-      #   run: |
-      #     cd backend
-      #     npm test
+      - name: Run backend tests
+        run: |
+          cd backend
+          npm test
 
       # ---------------- FRONTEND ----------------
       - name: Install frontend deps
