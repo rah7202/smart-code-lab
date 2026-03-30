@@ -1,4 +1,3 @@
-// src/components/VersionPanel.tsx
 import { useState } from "react";
 import { FaLockOpen } from "react-icons/fa";
 import { HiLockClosed } from "react-icons/hi";
