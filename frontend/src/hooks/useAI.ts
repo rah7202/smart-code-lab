@@ -13,13 +13,18 @@ interface UseAIProps {
     roomId: string;
 }
 
+interface AIMessage {
+    role: "user" | "ai";
+    content: string;
+}
+
 export function useAI({ userCode, userLang, roomId }: UseAIProps) {
-    const [aiOutput, setAiOutput] = useState("");
-    const [displayText, setDisplayText] = useState("");
+    // const [aiOutput, setAiOutput] = useState("");
+    // const [displayText, setDisplayText] = useState("");
     const [isAiThinking, setIsAiThinking] = useState(false);
     const [rateCooldown, setRateCooldown] = useState(0);
     const [aiQuestion, setAiQuestion] = useState("");
-    const [history, setHistory] = useState<any[]>([]);
+    const [history, setHistory] = useState<AIMessage[]>([]);
 
     const [mode, setMode] = useState<"code" | "selection" | "question">("code");
 
@@ -28,22 +33,6 @@ export function useAI({ userCode, userLang, roomId }: UseAIProps) {
     const bottomRef = useRef<HTMLDivElement | null>(null);
     const aiOutputRef = useRef<HTMLDivElement | null>(null);
     const isUserScrolledUp = useRef(false);
-
-    // STREAMING EFFECT
-    useEffect(() => {
-        if (!aiOutput) {
-            setDisplayText("");
-            return;
-        }
-        let i = 0;
-        setDisplayText("");
-        const interval = setInterval(() => {
-            setDisplayText((prev) => prev + aiOutput.charAt(i));
-            i++;
-            if (i >= aiOutput.length) clearInterval(interval);
-        }, 10);
-        return () => clearInterval(interval);
-    }, [aiOutput]);
 
     // AUTO SCROLL
     useEffect(() => {
@@ -55,12 +44,6 @@ export function useAI({ userCode, userLang, roomId }: UseAIProps) {
         el.addEventListener("scroll", handleScroll);
         return () => el.removeEventListener("scroll", handleScroll);
     }, []);
-
-    useEffect(() => {
-        if (!isUserScrolledUp.current) {
-            bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-        }
-    }, [displayText]);
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -106,8 +89,6 @@ export function useAI({ userCode, userLang, roomId }: UseAIProps) {
         }
         aiTimestamps.current.push(Date.now());
         setIsAiThinking(true);
-        setAiOutput("");
-        setDisplayText("");
 
         try {
             const res = await axios.post(`${URL}/ai/generate`, { prompt, roomId });
@@ -117,10 +98,13 @@ export function useAI({ userCode, userLang, roomId }: UseAIProps) {
                 { role: "user", content: prompt },
                 { role: "ai", content: res.data.data },
             ])
-            setAiOutput(res.data.data);
 
         } catch {
-            setAiOutput("❌ AI Error — check your server connection.");
+            // setAiOutput("❌ AI Error — check your server connection.");
+            setHistory(prev => [
+                ...prev,
+                { role: "ai", content: "AI Error — check your server connection." },
+            ])
         }
         setIsAiThinking(false);
     };
@@ -161,6 +145,7 @@ ${userCode}
         setMode("code");
         sendPrompt(prompt);
     };
+    
 
     // QUESTION INPUT — freeform, no code injected, just chat
     const askQuestion = (question: string) => {
@@ -200,8 +185,6 @@ Respond in clean, valid Markdown. Use code blocks with language tags for any cod
         mode,
         history,
         setHistory,
-        aiOutput,
-        displayText,
         isAiThinking,
         rateCooldown,
         aiQuestion,
