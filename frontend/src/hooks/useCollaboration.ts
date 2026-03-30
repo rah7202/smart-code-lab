@@ -1,7 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
+import toast from "react-hot-toast";
+import type { editor } from "monaco-editor";
+import type * as Monaco from "monaco-editor"
 
 interface User {
+    username: string;
+    color: string;
+    socketId: string;
+}
+
+interface CursorMovePayload {
+    line: number;
+    column: number;
     username: string;
     color: string;
     socketId: string;
@@ -10,73 +21,92 @@ interface User {
 interface UseCollaborationProps {
     roomId: string;
     username: string;
+    editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
+    monacoInstance: React.MutableRefObject<typeof Monaco | null>;
     onCodeChange: (code: string) => void;
-    setUserLang: (lang: string) => void;
+    onLangChange: (lang: string) => void;  // replaces setUserLang — EditorPage handles Monaco
     isRemoteUpdate: React.MutableRefObject<boolean>;
 }
 
-export function useCollaboration({ roomId, username, onCodeChange, isRemoteUpdate }: UseCollaborationProps) {
+export function useCollaboration({
+    roomId,
+    username,
+    editorRef,
+    monacoInstance,
+    onCodeChange,
+    onLangChange,
+    isRemoteUpdate,
+}: UseCollaborationProps) {
     const [users, setUsers] = useState<User[]>([]);
     const myColor = useRef<string>("#ffffff");
-    const editorRef = useRef<any>(null);
-    const decorationsRef = useRef<Map<string, any[]>>(new Map());
+    const decorationsRef = useRef<Map<string, string[]>>(new Map());
 
-    // JOIN ROOM
+    // ── JOIN ROOM ─────────────────────────────────────────────────────────────
     useEffect(() => {
+        socket.connect();
         socket.emit("join", { RoomId: roomId, username });
+
+        return () => {
+            // Don't disconnect here — Navbar Leave button handles that
+        };
     }, [roomId, username]);
 
-    // SOCKET LISTENERS
+    // ── SOCKET LISTENERS ──────────────────────────────────────────────────────
     useEffect(() => {
+
+        // New user joined — send them the current code
         socket.on("code-sync", (code: string) => {
             if (code) onCodeChange(code);
         });
 
-        socket.on("connect_error", (err) => {
-            console.log("socket connection failed", err.message);
-        })
-
-        socket.on("content-edited", ({ code }: { code: string }) => {
-            // Change this:
-            // if (!code || code.trim() === "") return; 
-
-            // To this:
-            if (code === undefined || code === null) return;
-
-            isRemoteUpdate.current = true;
-            onCodeChange(code); // Pass language if your backend sends it
+        socket.on("connect_error", () => {
+            toast.error("Connection failed. Please check your network and try again.");
         });
 
-        socket.on("users", (updatedUsers: User[]) => {
+        // A collaborator edited code
+        socket.on("content-edited", ({ code, language }: { code: string, language: string }) => {
+            if (code === undefined || code === null) return;
+            
+            if (language) {
+                onLangChange(language);
+            }
 
+            onCodeChange(code);
+        });
+
+        // User list updated (join / leave)
+        socket.on("users", (updatedUsers: User[]) => {
             const currentSocketIds = new Set(updatedUsers.map(u => u.socketId));
 
+            // Clean up decorations for users who left
             decorationsRef.current.forEach((decs, socketId) => {
                 if (!currentSocketIds.has(socketId)) {
-
-                    // Remove their decorations from editor
-                    if (editorRef.current) {
-                        editorRef.current.deltaDecorations(decs, []);
-                    }
+                    editorRef.current?.deltaDecorations(decs, []);
                     decorationsRef.current.delete(socketId);
-
                     document.getElementById(`cursor-style-${socketId}`)?.remove();
                 }
             });
 
             setUsers(updatedUsers);
-            const me = updatedUsers.find((u) => u.username === username);
+            const me = updatedUsers.find(u => u.username === username);
             if (me) myColor.current = me.color;
         });
 
-        socket.on("cursor-move", ({ line, column, username: remoteUser, color, socketId }: any) => {
+        // A collaborator moved their cursor
+        socket.on("cursor-move", ({ line, column, username: remoteUser, color, socketId }: CursorMovePayload) => {
+
             if (!editorRef.current) return;
+
             const editor = editorRef.current;
             if (!editor.getModel()) return;
 
+            const monaco = monacoInstance.current;
+            if (!monaco) return;
+
             const newDecorations = [
                 {
-                    range: new (window as any).monaco.Range(line, column, line, column + 1),
+
+                    range: new monaco.Range(line, column, line, column + 1),
                     options: {
                         className: `cursor-decoration-${socketId}`,
                         beforeContentClassName: `cursor-label-${socketId}`,
@@ -85,7 +115,7 @@ export function useCollaboration({ roomId, username, onCodeChange, isRemoteUpdat
                     },
                 },
                 {
-                    range: new (window as any).monaco.Range(line, 1, line, 1),
+                    range: new monaco.Range(line, 1, line, 1),
                     options: {
                         isWholeLine: true,
                         className: `line-highlight-${socketId}`,
@@ -93,12 +123,10 @@ export function useCollaboration({ roomId, username, onCodeChange, isRemoteUpdat
                 },
             ];
 
-            const oldDecorations = decorationsRef.current.get(socketId) || [];
-
-            const updated = editor.deltaDecorations(oldDecorations, newDecorations);
-
+            const old = decorationsRef.current.get(socketId) ?? [];
+            const updated = editor.deltaDecorations(old, newDecorations);
             decorationsRef.current.set(socketId, updated);
-
+            
             injectCursorStyle(socketId, color, remoteUser);
         });
 
@@ -107,9 +135,11 @@ export function useCollaboration({ roomId, username, onCodeChange, isRemoteUpdat
             socket.off("content-edited");
             socket.off("users");
             socket.off("cursor-move");
+            socket.off("connect_error");
         };
-    }, [username, onCodeChange]);
+    }, [username, onCodeChange, onLangChange]);
 
+    // ── CURSOR STYLE INJECTION ────────────────────────────────────────────────
     const injectCursorStyle = (socketId: string, color: string, name: string) => {
         const styleId = `cursor-style-${socketId}`;
         if (document.getElementById(styleId)) return;
@@ -120,7 +150,7 @@ export function useCollaboration({ roomId, username, onCodeChange, isRemoteUpdat
             .cursor-decoration-${socketId} {
                 border-left: 2px solid ${color};
                 margin-left: -1px;
-                position:relative;
+                position: relative;
             }
             .cursor-label-${socketId}::before {
                 content: "${name}";
@@ -129,7 +159,7 @@ export function useCollaboration({ roomId, username, onCodeChange, isRemoteUpdat
                 font-size: 10px;
                 font-weight: 700;
                 padding: 1px 5px;
-                border-radius: 3px 3px 3px 0px;
+                border-radius: 3px 3px 3px 0;
                 position: absolute;
                 bottom: 100%;
                 left: 1px;
@@ -148,6 +178,7 @@ export function useCollaboration({ roomId, username, onCodeChange, isRemoteUpdat
         document.head.appendChild(style);
     };
 
+    // ── EMITTERS ──────────────────────────────────────────────────────────────
     const emitCursorMove = (line: number, column: number) => {
         socket.emit("cursor-move", {
             line,
@@ -157,7 +188,8 @@ export function useCollaboration({ roomId, username, onCodeChange, isRemoteUpdat
         });
     };
 
-    const emitCodeChange = ({ code, language }: { code: string, language: string }) => {
+    const emitCodeChange = ({ code, language }: { code: string; language: string }) => {
+        // Never re-emit what we just received from a remote update
         if (isRemoteUpdate.current) {
             isRemoteUpdate.current = false;
             return;
@@ -165,5 +197,5 @@ export function useCollaboration({ roomId, username, onCodeChange, isRemoteUpdat
         socket.emit("content-edited", { code, language });
     };
 
-    return { users, editorRef, decorationsRef, emitCursorMove, emitCodeChange };
+    return { users, decorationsRef, emitCursorMove, emitCodeChange };
 }

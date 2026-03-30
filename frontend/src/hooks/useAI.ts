@@ -1,4 +1,3 @@
-// src/hooks/useAI.ts
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -19,8 +18,6 @@ interface AIMessage {
 }
 
 export function useAI({ userCode, userLang, roomId }: UseAIProps) {
-    // const [aiOutput, setAiOutput] = useState("");
-    // const [displayText, setDisplayText] = useState("");
     const [isAiThinking, setIsAiThinking] = useState(false);
     const [rateCooldown, setRateCooldown] = useState(0);
     const [aiQuestion, setAiQuestion] = useState("");
@@ -100,7 +97,6 @@ export function useAI({ userCode, userLang, roomId }: UseAIProps) {
             ])
 
         } catch {
-            // setAiOutput("❌ AI Error — check your server connection.");
             setHistory(prev => [
                 ...prev,
                 { role: "ai", content: "AI Error — check your server connection." },
