@@ -8,25 +8,25 @@ import { AiOutlineClear } from "react-icons/ai";
 import toast from "react-hot-toast";
 import axios from "axios";
 import geminiLogo from "../assets/geminiLogo.png";
+import type { Components } from "react-markdown";
 
 const URL = import.meta.env.VITE_BACKEND_URL;
 
-interface Message {
-    role: "user" | "assistant";
+interface AIMessage {
+    role: "user" | "ai";
     content: string;
 }
 
 interface AIPanelProps {
     roomId: string;
     mode: "code" | "selection" | "question";
-    history: Message[];
-    setHistory: (v: Message[]) => void;
+    history: AIMessage[];
+    setHistory: (v: AIMessage[]) => void;
     isAiThinking: boolean;
     rateCooldown: number;
     aiQuestion: string;
     setAiQuestion: (v: string) => void;
     onAskQuestion: (q: string) => void;
-    aiOutput: string;
     isRunning: boolean;
     userOutput: string;
     aiOutputRef: React.RefObject<HTMLDivElement | null>;
@@ -38,7 +38,7 @@ export default function AIPanel({
     mode, history, setHistory,
     isAiThinking, rateCooldown,
     aiQuestion, setAiQuestion, onAskQuestion,
-    aiOutput, isRunning, userOutput,
+    isRunning, userOutput,
     aiOutputRef, bottomRef,
 }: AIPanelProps) {
 
@@ -48,6 +48,10 @@ export default function AIPanel({
     };
 
     const handleClearChat = async () => {
+        if (history.length === 0) {
+            toast("Chat is already empty", { icon: "ℹ️" });
+            return;
+        } 
         try {
             await axios.delete(`${URL}/ai/history/${roomId}`);
             setHistory([]);
@@ -57,10 +61,69 @@ export default function AIPanel({
         }
     };
 
+    const markdownComponents: Components = {
+            h2: ({ children }) => (
+                <h2 className="text-sm font-bold text-blue-400 mt-4 mb-2 border-b border-white/8 pb-1 first:mt-0">
+                    {children}
+                </h2>
+                ),
+            h3: ({ children }) => (
+                <h3 className="text-xs font-semibold text-blue-300 mt-3 mb-1">
+                    {children}
+                </h3>
+                ),
+            p: ({ children }) => (
+                <p className="text-sm text-gray-300 mb-2 leading-relaxed">
+                    {children}
+                </p>
+             ),
+            ul: ({ children }) => (
+                <ul className="text-sm text-gray-300 mb-2 space-y-1 pl-1">
+                    {children}
+                </ul>
+                ),
+            li: ({ children }) => (
+                <li className="flex gap-2">
+                    <span className="text-white/25 mt-1 shrink-0 text-xs">–</span>
+                    <span className="leading-relaxed">{children}</span>
+                    </li>
+                ),
+            code({ inline, className, children }: any) {
+                const match = /language-(\w+)/.exec(className || "");
+                const codeText = String(children).replace(/\n$/, "");
+                    return !inline && match ? (
+                        <div className="relative my-3 rounded-lg overflow-hidden border border-white/8">
+                            <div className="flex items-center justify-between bg-white/4 border-b border-white/6 px-3 py-1.5">
+                            <span className="text-[10px] font-mono text-white/30 uppercase tracking-wider">
+                                {match[1]}
+                            </span>
+                            <button
+                                onClick={() => copyToClipboard(codeText)}
+                                className="flex items-center gap-1 text-[10px] text-white/30 hover:text-white/60 transition-colors cursor-pointer"
+                            >
+                                <FiCopy size={11} /> Copy
+                            </button>
+                            </div>
+                            <SyntaxHighlighter
+                                style={oneDark}
+                                language={match[1]}
+                                customStyle={{ margin: 0, borderRadius: 0, padding: "0.875rem", fontSize: "0.78rem", background: "#080d12" }}
+                            >
+                                {codeText}
+                            </SyntaxHighlighter>
+                        </div>
+                        ) : (
+                            <code className="bg-white/8 text-yellow-300/80 px-1.5 py-0.5 rounded text-xs font-mono border border-white/8">
+                                {children}
+                            </code>
+                        );
+                    },
+                };
+
     return (
         <>
             {/* QUESTION INPUT */}
-            <div className="flex gap-2 items-end">
+            <div className="relative w-full">
                 <textarea
                     value={aiQuestion}
                     onChange={(e) => setAiQuestion(e.target.value)}
@@ -73,19 +136,19 @@ export default function AIPanel({
                     placeholder="Ask anything… (Enter to send)"
                     rows={2}
                     disabled={isAiThinking || rateCooldown > 0}
-                    className="flex-1 resize-none bg-gray-800 border border-white/8
+                    className="w-full resize-none bg-gray-800 border border-white/8
                                text-sm text-white/80 placeholder:text-white/25
-                               rounded-lg px-3 py-2 outline-none
+                               rounded-lg px-3 pr-10 py-2 outline-none
                                focus:border-white/20 transition-colors
                                disabled:opacity-40 disabled:cursor-not-allowed"
                 />
                 <button
                     onClick={() => { if (aiQuestion.trim()) onAskQuestion(aiQuestion); }}
                     disabled={isAiThinking || !aiQuestion.trim() || rateCooldown > 0}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg
+                    className="absolute right-2 bottom-2 w-7 h-7 flex items-center justify-center rounded-md
                                bg-white text-gray-900
-                               disabled:opacity-25 hover:bg-gray-100 active:scale-95
-                               transition-all duration-150 shrink-0 mb-0.5 cursor-pointer
+                               hover:bg-yellow-500 active:scale-95
+                               transition-all duration-150 mb-3 mr-2 disabled:opacity-25 cursor-pointer
                                disabled:cursor-not-allowed"
                 >
                     <IoSend size={14} />
@@ -149,7 +212,7 @@ export default function AIPanel({
                     )}
 
                     {/* Empty state */}
-                    {!aiOutput && !isAiThinking ? (
+                    {history.length === 0 && !isAiThinking ? (
                         <div className="flex flex-col items-center justify-center py-8 gap-2">
                             <img src={geminiLogo} className="w-8 h-8 opacity-20" />
                             <p className="text-xs text-white/25 text-center">
@@ -164,64 +227,7 @@ export default function AIPanel({
                                 </div>
                                 <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
-                                    components={{
-                                        h2: ({ children }) => (
-                                            <h2 className="text-sm font-bold text-blue-400 mt-4 mb-2 border-b border-white/8 pb-1 first:mt-0">
-                                                {children}
-                                            </h2>
-                                        ),
-                                        h3: ({ children }) => (
-                                            <h3 className="text-xs font-semibold text-blue-300 mt-3 mb-1">
-                                                {children}
-                                            </h3>
-                                        ),
-                                        p: ({ children }) => (
-                                            <p className="text-sm text-gray-300 mb-2 leading-relaxed">
-                                                {children}
-                                            </p>
-                                        ),
-                                        ul: ({ children }) => (
-                                            <ul className="text-sm text-gray-300 mb-2 space-y-1 pl-1">
-                                                {children}
-                                            </ul>
-                                        ),
-                                        li: ({ children }) => (
-                                            <li className="flex gap-2">
-                                                <span className="text-white/25 mt-1 shrink-0 text-xs">–</span>
-                                                <span className="leading-relaxed">{children}</span>
-                                            </li>
-                                        ),
-                                        code({ inline, className, children }: any) {
-                                            const match = /language-(\w+)/.exec(className || "");
-                                            const codeText = String(children).replace(/\n$/, "");
-                                            return !inline && match ? (
-                                                <div className="relative my-3 rounded-lg overflow-hidden border border-white/8">
-                                                    <div className="flex items-center justify-between bg-white/4 border-b border-white/6 px-3 py-1.5">
-                                                        <span className="text-[10px] font-mono text-white/30 uppercase tracking-wider">
-                                                            {match[1]}
-                                                        </span>
-                                                        <button
-                                                            onClick={() => copyToClipboard(codeText)}
-                                                            className="flex items-center gap-1 text-[10px] text-white/30 hover:text-white/60 transition-colors cursor-pointer"
-                                                        >
-                                                            <FiCopy size={11} /> Copy
-                                                        </button>
-                                                    </div>
-                                                    <SyntaxHighlighter
-                                                        style={oneDark}
-                                                        language={match[1]}
-                                                        customStyle={{ margin: 0, borderRadius: 0, padding: "0.875rem", fontSize: "0.78rem", background: "#080d12" }}
-                                                    >
-                                                        {codeText}
-                                                    </SyntaxHighlighter>
-                                                </div>
-                                            ) : (
-                                                <code className="bg-white/8 text-yellow-300/80 px-1.5 py-0.5 rounded text-xs font-mono border border-white/8">
-                                                    {children}
-                                                </code>
-                                            );
-                                        },
-                                    }}
+                                    components={markdownComponents} 
                                 >
                                     {msg.content}
                                 </ReactMarkdown>
