@@ -2,76 +2,84 @@
 
 
 import { Server } from "socket.io";
-import { Server as HttpServer } from "http";
-import { User, JoinRoomPayload } from "../types";
+import { User, JoinRoomPayload, RoomPayload } from "../types";  
+import { logger } from "../utils/logger";
+import http from "http";
 
-const COLORS = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4",
-    "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F"];
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "http://localhost:5173")
+    .split(",")
+    .map((o) => o.trim());
 
-const RoomtoUser = new Map<string, User[]>();
-const RoomtoContent = new Map<string, string>();
-const SockettoRoom = new Map<string, string>();
-const SockettoColor = new Map<string, string>();
+const RoomToUsers = new Map<string, User[]>();
+const RoomToContent = new Map<string, RoomPayload>();
+const SocketToRoom = new Map<string, string>();
+const SocketToColor = new Map<string, string>();
 
-export const initSocket = (server: HttpServer) => {
+
+const USER_COLORS = [
+    "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4",
+    "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F"
+];
+
+export const initSocket = (server: http.Server) => {
     const io = new Server(server, {
         cors: {
-            origin: "*",
-            methods: ["GET", "POST"]
-        }
+            origin: ALLOWED_ORIGINS,
+            methods: ["GET", "POST"],
+            credentials: true,
+        },
     });
 
-    // JOIN ROOM
+    
     io.on("connection", (socket) => {
-        console.log("User Connected", socket.id);
-
+        logger.info("[SOCKET] Client connected", { socketId: socket.id});
+        
+        // JOIN ROOM
         socket.on("join", ({ RoomId, username }: JoinRoomPayload) => {
-
-            // assign colour to the socket
-            const color = COLORS[(RoomtoUser.get(RoomId)?.length ?? 0) % COLORS.length] ?? "#4ECDC4";
-            SockettoColor.set(socket.id, color);
-
-            console.log("Stored content for room: ", RoomtoContent.get(RoomId));
-            socket.join(RoomId);
-
-            // store mapping
-            SockettoRoom.set(socket.id, RoomId);
-
-            // add user
-            const users = RoomtoUser.get(RoomId) || [];
-
-            const alreadyExists = users.find(u => u.socketId === socket.id);
-            if (!alreadyExists) {
-                users.push({ socketId: socket.id, username, color });
+            if (!RoomId || !username) {
+                logger.warn("[SOCKET] join called with missing fields", { socketId: socket.id});
+                return;
             }
 
-            //users.push({ socketId: socket.id, username, color });
-            RoomtoUser.set(RoomId, users);
+            socket.join(RoomId);
+            SocketToRoom.set(socket.id, RoomId); 
+            
+            
+            const existing = RoomToUsers.get(RoomId) ?? [];
+            const color = USER_COLORS[existing.length % USER_COLORS.length] ?? "#4ECDC4";
+            const updated = [...existing, {username, color, socketId: socket.id}];
+            RoomToUsers.set(RoomId, updated as User[]);
+            SocketToColor.set(socket.id, color);
 
-            // send current code to new user
-            socket.emit("code-sync", RoomtoContent.get(RoomId) || "");
+            io.to(RoomId).emit("users", updated);
 
-            // send updated user list to all users in the room
-            io.to(RoomId).emit("users", users);
+            const content = RoomToContent.get(RoomId);
+            if (content?.code) {
+                socket.emit("code-sync", content.code);
+            }
+
+            // if (content?.language) {
+            //     socket.emit("language-sync", content.language);
+            // }
+
+            logger.info("[SOCKET] User joined room", { socketId: socket.id, RoomId, username });
         });
 
         // CODE EDITOR
-        socket.on("content-edited", ({ code, language }: { code: string, language: string }) => {
-            const roomId = SockettoRoom.get(socket.id);
-            console.log("Server received content-edited from:", socket.id, "roomId:", roomId, "code:", code);
-
-
+        socket.on("content-edited", ({ code, language }: RoomPayload) => {
+            const roomId = SocketToRoom.get(socket.id);
             if (!roomId) return;
 
-            RoomtoContent.set(roomId, code);
+            const prev = RoomToContent.get(roomId);
+            RoomToContent.set(roomId, { code, language });
 
-            // send to others only
+            // Broadcast code changes to others in the room
             socket.to(roomId).emit("content-edited", { code, language });
-            console.log("Broadcasted to room:", roomId);
         });
-
+        
+        // CURSOR MOVEMENT
         socket.on("cursor-move", ({ line, column, username, color }: { line: number, column: number, username: string, color: string }) => {
-            const roomId = SockettoRoom.get(socket.id);
+            const roomId = SocketToRoom.get(socket.id);
             if (!roomId) return;
 
             // broadcast to others in the room
@@ -80,31 +88,19 @@ export const initSocket = (server: HttpServer) => {
 
         // DISCONNECT
         socket.on("disconnect", () => {
+            const roomId = SocketToRoom.get(socket.id);
 
-            const roomId = SockettoRoom.get(socket.id);
+            if (roomId) {
+                const users = (RoomToUsers.get(roomId) ?? []).filter((u) => u.socketId !== socket.id);
+                RoomToUsers.set(roomId, users);
+                io.to(roomId).emit("users", users);
+                SocketToRoom.delete(socket.id);
+                SocketToColor.delete(socket.id);
 
-            if (!roomId) return;
-
-            // remove user
-            const users = RoomtoUser.get(roomId) || [];
-
-            const updatedUsers = users.filter((u) => u.socketId !== socket.id);
-
-            // update user list
-            RoomtoUser.set(roomId, updatedUsers);
-
-            // remove mapping
-            SockettoRoom.delete(socket.id);
-
-            // send updated user list
-            io.to(roomId).emit("users", updatedUsers);
-
-            // remove color
-            SockettoColor.delete(socket.id);
-
-            console.log("User disconnected");
+                logger.info("[SOCKET] User disconnected", { socketId: socket.id, roomId });
+            }
         });
-
-
     });
+
+    return io;
 };
