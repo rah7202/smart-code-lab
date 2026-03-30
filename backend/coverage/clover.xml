@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1774880413475" clover="3.2.0">
+  <project timestamp="1774880413476" name="All files">
+    <metrics statements="177" coveredstatements="175" conditionals="38" coveredconditionals="33" methods="24" coveredmethods="22" elements="239" coveredelements="230" complexity="0" loc="177" ncloc="177" packages="6" files="15" classes="15"/>
+    <package name="src">
+      <metrics statements="31" coveredstatements="31" conditionals="10" coveredconditionals="9" methods="4" coveredmethods="4"/>
+      <file name="app.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\app.ts">
+        <metrics statements="31" coveredstatements="31" conditionals="10" coveredconditionals="9" methods="4" coveredmethods="4"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="8" count="1" type="stmt"/>
+        <line num="9" count="1" type="stmt"/>
+        <line num="10" count="1" type="stmt"/>
+        <line num="13" count="1" type="stmt"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="19" count="1" type="cond" truecount="2" falsecount="0"/>
+        <line num="21" count="1" type="stmt"/>
+        <line num="23" count="1" type="stmt"/>
+        <line num="27" count="21" type="cond" truecount="4" falsecount="0"/>
+        <line num="28" count="2" type="stmt"/>
+        <line num="35" count="1" type="stmt"/>
+        <line num="36" count="1" type="stmt"/>
+        <line num="39" count="1" type="stmt"/>
+        <line num="46" count="1" type="stmt"/>
+        <line num="49" count="1" type="stmt"/>
+        <line num="58" count="1" type="stmt"/>
+        <line num="59" count="1" type="stmt"/>
+        <line num="60" count="1" type="stmt"/>
+        <line num="61" count="1" type="stmt"/>
+        <line num="64" count="1" type="stmt"/>
+        <line num="65" count="8" type="stmt"/>
+        <line num="69" count="1" type="stmt"/>
+        <line num="70" count="2" type="stmt"/>
+        <line num="71" count="2" type="cond" truecount="3" falsecount="1"/>
+        <line num="74" count="1" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.controllers">
+      <metrics statements="64" coveredstatements="64" conditionals="8" coveredconditionals="5" methods="8" coveredmethods="8"/>
+      <file name="ai.controller.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\controllers\ai.controller.ts">
+        <metrics statements="23" coveredstatements="23" conditionals="2" coveredconditionals="1" methods="3" coveredmethods="3"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="4" count="2" type="stmt"/>
+        <line num="6" count="2" type="stmt"/>
+        <line num="7" count="13" type="stmt"/>
+        <line num="9" count="13" type="stmt"/>
+        <line num="10" count="13" type="cond" truecount="1" falsecount="1"/>
+        <line num="13" count="13" type="stmt"/>
+        <line num="21" count="12" type="stmt"/>
+        <line num="24" count="11" type="stmt"/>
+        <line num="32" count="11" type="stmt"/>
+        <line num="38" count="2" type="stmt"/>
+        <line num="46" count="2" type="stmt"/>
+        <line num="48" count="3" type="stmt"/>
+        <line num="50" count="3" type="stmt"/>
+        <line num="51" count="3" type="stmt"/>
+        <line num="56" count="2" type="stmt"/>
+        <line num="59" count="1" type="stmt"/>
+        <line num="66" count="2" type="stmt"/>
+        <line num="67" count="3" type="stmt"/>
+        <line num="69" count="3" type="stmt"/>
+        <line num="70" count="3" type="stmt"/>
+        <line num="74" count="2" type="stmt"/>
+        <line num="76" count="1" type="stmt"/>
+      </file>
+      <file name="codeSnapshot.controller.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\controllers\codeSnapshot.controller.ts">
+        <metrics statements="15" coveredstatements="15" conditionals="0" coveredconditionals="0" methods="2" coveredmethods="2"/>
+        <line num="2" count="2" type="stmt"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="5" count="2" type="stmt"/>
+        <line num="7" count="3" type="stmt"/>
+        <line num="8" count="3" type="stmt"/>
+        <line num="9" count="3" type="stmt"/>
+        <line num="11" count="3" type="stmt"/>
+        <line num="17" count="2" type="stmt"/>
+        <line num="19" count="1" type="stmt"/>
+        <line num="23" count="2" type="stmt"/>
+        <line num="24" count="3" type="stmt"/>
+        <line num="26" count="3" type="stmt"/>
+        <line num="27" count="3" type="stmt"/>
+        <line num="32" count="2" type="stmt"/>
+        <line num="34" count="1" type="stmt"/>
+      </file>
+      <file name="compile.controller.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\controllers\compile.controller.ts">
+        <metrics statements="11" coveredstatements="11" conditionals="6" coveredconditionals="4" methods="1" coveredmethods="1"/>
+        <line num="2" count="2" type="stmt"/>
+        <line num="5" count="2" type="stmt"/>
+        <line num="6" count="6" type="stmt"/>
+        <line num="7" count="6" type="stmt"/>
+        <line num="8" count="6" type="stmt"/>
+        <line num="10" count="5" type="stmt"/>
+        <line num="11" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="12" count="3" type="stmt"/>
+        <line num="14" count="2" type="cond" truecount="2" falsecount="2"/>
+        <line num="17" count="5" type="stmt"/>
+        <line num="24" count="1" type="stmt"/>
+      </file>
+      <file name="room.controller.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\controllers\room.controller.ts">
+        <metrics statements="15" coveredstatements="15" conditionals="0" coveredconditionals="0" methods="2" coveredmethods="2"/>
+        <line num="2" count="2" type="stmt"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="6" count="2" type="stmt"/>
+        <line num="7" count="3" type="stmt"/>
+        <line num="9" count="3" type="stmt"/>
+        <line num="10" count="3" type="stmt"/>
+        <line num="12" count="2" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="23" count="2" type="stmt"/>
+        <line num="24" count="2" type="stmt"/>
+        <line num="25" count="2" type="stmt"/>
+        <line num="27" count="2" type="stmt"/>
+        <line num="28" count="2" type="stmt"/>
+        <line num="36" count="1" type="stmt"/>
+        <line num="38" count="1" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.middleware">
+      <metrics statements="14" coveredstatements="14" conditionals="2" coveredconditionals="2" methods="3" coveredmethods="3"/>
+      <file name="validate.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\middleware\validate.ts">
+        <metrics statements="14" coveredstatements="14" conditionals="2" coveredconditionals="2" methods="3" coveredmethods="3"/>
+        <line num="2" count="6" type="stmt"/>
+        <line num="4" count="6" type="stmt"/>
+        <line num="5" count="12" type="stmt"/>
+        <line num="6" count="48" type="stmt"/>
+        <line num="7" count="48" type="cond" truecount="2" falsecount="0"/>
+        <line num="8" count="11" type="stmt"/>
+        <line num="10" count="11" type="stmt"/>
+        <line num="15" count="11" type="stmt"/>
+        <line num="17" count="37" type="stmt"/>
+        <line num="18" count="37" type="stmt"/>
+        <line num="24" count="6" type="stmt"/>
+        <line num="30" count="6" type="stmt"/>
+        <line num="35" count="6" type="stmt"/>
+        <line num="40" count="6" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.routes">
+      <metrics statements="28" coveredstatements="28" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+      <file name="ai.route.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\routes\ai.route.ts">
+        <metrics statements="8" coveredstatements="8" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="2" count="2" type="stmt"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="5" count="2" type="stmt"/>
+        <line num="7" count="2" type="stmt"/>
+        <line num="8" count="2" type="stmt"/>
+        <line num="9" count="2" type="stmt"/>
+        <line num="11" count="2" type="stmt"/>
+      </file>
+      <file name="codeSnapshot.routes.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\routes\codeSnapshot.routes.ts">
+        <metrics statements="7" coveredstatements="7" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="2" count="2" type="stmt"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="5" count="2" type="stmt"/>
+        <line num="7" count="2" type="stmt"/>
+        <line num="8" count="2" type="stmt"/>
+        <line num="10" count="2" type="stmt"/>
+      </file>
+      <file name="compile.route.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\routes\compile.route.ts">
+        <metrics statements="6" coveredstatements="6" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="2" count="2" type="stmt"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="6" count="2" type="stmt"/>
+        <line num="8" count="2" type="stmt"/>
+        <line num="10" count="2" type="stmt"/>
+      </file>
+      <file name="room.route.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\routes\room.route.ts">
+        <metrics statements="7" coveredstatements="7" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="2" count="2" type="stmt"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="5" count="2" type="stmt"/>
+        <line num="8" count="2" type="stmt"/>
+        <line num="11" count="2" type="stmt"/>
+        <line num="13" count="2" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.services">
+      <metrics statements="27" coveredstatements="27" conditionals="8" coveredconditionals="8" methods="4" coveredmethods="4"/>
+      <file name="ai.service.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\services\ai.service.ts">
+        <metrics statements="11" coveredstatements="11" conditionals="2" coveredconditionals="2" methods="1" coveredmethods="1"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="9" count="1" type="stmt"/>
+        <line num="10" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="12" count="3" type="stmt"/>
+        <line num="14" count="3" type="stmt"/>
+        <line num="15" count="2" type="stmt"/>
+        <line num="17" count="2" type="stmt"/>
+        <line num="18" count="2" type="stmt"/>
+      </file>
+      <file name="codeSnapshot.service.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\services\codeSnapshot.service.ts">
+        <metrics statements="6" coveredstatements="6" conditionals="4" coveredconditionals="4" methods="1" coveredmethods="1"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="9" count="9" type="stmt"/>
+        <line num="15" count="8" type="cond" truecount="4" falsecount="0"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="19" count="7" type="stmt"/>
+      </file>
+      <file name="judge0.service.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\services\judge0.service.ts">
+        <metrics statements="4" coveredstatements="4" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="4" count="8" type="stmt"/>
+        <line num="13" count="7" type="stmt"/>
+      </file>
+      <file name="room.service.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\services\room.service.ts">
+        <metrics statements="6" coveredstatements="6" conditionals="2" coveredconditionals="2" methods="1" coveredmethods="1"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="3" type="stmt"/>
+        <line num="8" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="9" count="1" type="stmt"/>
+        <line num="18" count="2" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.utils">
+      <metrics statements="13" coveredstatements="11" conditionals="10" coveredconditionals="9" methods="5" coveredmethods="3"/>
+      <file name="logger.ts" path="C:\Users\rpidi\OneDrive\Desktop\Smart Code Lab\backend\src\utils\logger.ts">
+        <metrics statements="13" coveredstatements="11" conditionals="10" coveredconditionals="9" methods="5" coveredmethods="3"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="10" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="13" count="7" type="cond" truecount="1" falsecount="1"/>
+        <line num="15" count="7" type="stmt"/>
+        <line num="22" count="7" type="stmt"/>
+        <line num="23" count="7" type="cond" truecount="4" falsecount="0"/>
+        <line num="24" count="2" type="stmt"/>
+        <line num="26" count="5" type="stmt"/>
+        <line num="30" count="2" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="5" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="2" type="stmt"/>
+      </file>
+    </package>
+  </project>
+</coverage>
