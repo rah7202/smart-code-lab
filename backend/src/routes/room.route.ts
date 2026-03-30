@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getRoomData, saveRoomCode } from "../controllers/room.controller";
+import { validate, roomSaveSchema } from "../middleware/validate";
 
 const router = Router();
 
@@ -7,6 +8,6 @@ const router = Router();
 router.get("/:roomId", getRoomData);
 
 // Save current code (debounced)
-router.post("/:roomId/save", saveRoomCode);
+router.post("/:roomId/save",validate(roomSaveSchema), saveRoomCode);
 
 export default router;

@@ -1,23 +1,22 @@
 import { Request, Response } from "express";
 import { prisma } from "../db/prisma";
+import { saveCodeSnapshot } from "../services/codeSnapshot.service";
 
 export const saveSnapshotController = async (req: Request, res: Response) => {
-    const { roomId } = req.params;
-    const { code, language } = req.body;
-
+    
     try {
-        await prisma.codeSnapshot.create({
-            data: {
-                roomId: roomId as string,
-                code: code as string,
-                language: language as string,
-            },
-        });
+        const { roomId } = req.params;
+        const { code, language } = req.body;
+        
+        await saveCodeSnapshot(
+            roomId as string,
+            code as string,
+            language as string
+        )
 
         res.json({ success: true });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Failed to save snapshot" });
+    } catch {
+        res.status(500).json({ error: "Failed to save snapshot"});
     }
 };
 
@@ -31,8 +30,7 @@ export const getSnapshotsController = async (req: Request, res: Response) => {
         });
 
         res.json(snapshots);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Failed to fetch snapshots" });
+    } catch {
+        res.status(500).json({ error: "Failed to fetch snapshots"});
     }
 };

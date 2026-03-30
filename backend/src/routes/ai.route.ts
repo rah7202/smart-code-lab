@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { askAI, clearAIHistory, generateResponse, getAIHistory } from "../controllers/ai.controller";
+import { clearAIHistory, generateResponse, getAIHistory } from "../controllers/ai.controller";
+import { validate, aiGenerateSchema } from "../middleware/validate";
 
 const router = Router();
 
-router.post("/generate", generateResponse);
-router.post("/ask", askAI);
+router.post("/generate", validate(aiGenerateSchema), generateResponse);
 router.get("/history/:roomId", getAIHistory);
 router.delete("/history/:roomId", clearAIHistory);
 
-export default router;
+export default router; 

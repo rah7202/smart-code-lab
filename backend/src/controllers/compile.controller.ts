@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { submitCode, getSubmission } from "../services/judge0.service";
+import { submitCode } from "../services/judge0.service";
 import { CompileRequest } from "../types";
 
 export const compileCode = async (req: Request, res: Response) => {
@@ -8,9 +8,10 @@ export const compileCode = async (req: Request, res: Response) => {
         const result = await submitCode(code, userLangId, input);
 
         let output = "";
-
         if (result.status.description === "Accepted") {
             output = result.stdout;
+        } else {
+            output = result.stderr || result.compile_output || result.message || "Error occurred";
         }
 
         res.json({
@@ -19,9 +20,9 @@ export const compileCode = async (req: Request, res: Response) => {
             time: result.time
         });
 
-    } catch (err) {
+    } catch {
         res.status(500).json({
-            err: "Compilation Failed"
+            error: "Compilation Failed"
         });
     }
 };

@@ -14,10 +14,10 @@ export type JoinRoomPayload = {
     username: string;
 };
 
-export type CodeChangePayload = {
-    roomId: string;
+export type RoomPayload ={
     code: string;
-};
+    language: string;
+}
 
 //-----------------JUDGE0 TYPES---------------------------
 
