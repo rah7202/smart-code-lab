@@ -7,6 +7,8 @@ import compileRoutes from "./routes/compile.route";
 import aiRoutes from "./routes/ai.route";
 import snapshotRoutes from "./routes/codeSnapshot.routes";
 import roomRoutes from "./routes/room.route";
+import { logger } from "./utils/logger";
+
 
 const app = express();
 
@@ -35,7 +37,7 @@ app.use(express.text());
 
 //----------GLOBAL--RATE--LIMITING---------------------------
 const globalRateLimiter = rateLimit({
-    windowMs: 60_1000, // 1 minute,
+    windowMs: 60_000, // 1 minute,
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
@@ -64,8 +66,8 @@ app.get("/health", (_req, res) => {
 });
 
 //------GLOBAL--ERROR--HANDLER-------------------------------
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    console.error("[ERROR]", err.message);
+app.use((err: Error & { status?: number }, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    logger.error("Unhandled error", { error: err.message, stack: err.stack });
     res.status(err.status ?? 500).json({ error:err.message ?? "Internal Server Error" });
 });
 
