@@ -14,13 +14,12 @@ export const getRoomData = async (req: Request, res: Response) => {
             language: room.language,
             code: room.code,
         });
-    } catch (err) {
-        console.error(err);
+    } catch {
         res.status(500).json({ error: "Failed to load room" });
     }
 };
 
-// 🔹 SAVE ROOM CODE
+// SAVE ROOM CODE
 export const saveRoomCode = async (req: Request, res: Response) => {
     const { roomId } = req.params;
     const { code, language } = req.body;
@@ -35,8 +34,7 @@ export const saveRoomCode = async (req: Request, res: Response) => {
         });
 
         res.json({ success: true });
-    } catch (err) {
-        console.error(err);
+    } catch  {
         res.status(500).json({ error: "Failed to save room" });
     }
 };

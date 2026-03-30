@@ -3,9 +3,6 @@ import { AIRequest } from "../types";
 import { generativeAIResponse } from "../services/ai.service";
 import { prisma } from "../db/prisma";
 
-// import { GoogleGenerativeAI } from "@google/generative-ai";
-// const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
-
 export const generateResponse = async (req: Request<{}, {}, AIRequest>, res: Response) => {
     const { prompt, roomId } = req.body;
 
@@ -36,32 +33,15 @@ export const generateResponse = async (req: Request<{}, {}, AIRequest>, res: Res
             success: true,
             data: response,
         });
-    } catch (err: any) {
-        console.error("Controller Error: ", err);
+    } catch {
+        
         res.status(500).json({
             success: false,
-            err: "Failed to generate response",
+            error: "Failed to generate response" ,
         });
     }
 };
 
-export const askAI = async (req: Request, res: Response) => {
-
-    try {
-        const { prompt } = req.body;
-        if (!prompt) return res.status(400).json({ error: "Prompt is required" });
-
-        const response = await generativeAIResponse(prompt);
-        res.json({ response });
-
-    } catch (error) {
-        console.error("Controller Error: ", error);
-        res.status(500).json({
-            success: false,
-            err: "Failed to generate response",
-        });
-    }
-};
 
 export const getAIHistory = async (req: Request, res: Response) => {
 
@@ -74,11 +54,11 @@ export const getAIHistory = async (req: Request, res: Response) => {
         });
 
         res.json(messages);
-    } catch (error) {
-        console.error("Controller Error: ", error);
+    } catch {
+        
         res.status(500).json({
             success: false,
-            err: "Failed to fetch AI history",
+            error: "Failed to fetch AI history",
         });
     }
 };
