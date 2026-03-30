@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import geminiLogo from "../assets/geminiLogo.png";
+import { IoSend } from "react-icons/io5";
+import { editor } from "monaco-editor"
 
 interface ToolbarPos {
     top: number;
@@ -7,7 +9,7 @@ interface ToolbarPos {
 }
 
 interface SelectionToolbarProps {
-    editorRef: React.MutableRefObject<any>;
+    editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
     onAsk: (question: string, selectedCode: string) => void;
     isEditorReady: boolean;
 }
@@ -31,12 +33,8 @@ export default function SelectionToolbar({ editorRef, onAsk, isEditorReady }: Se
         if (!isEditorReady || !editorRef.current) return;
 
         const editor = editorRef.current;
-
-        console.log("EDITOR READY, attaching selection listener");
-
         const disposable = editor.onDidChangeCursorSelection(() => {
-            console.log("SELECTION CHANGED"); // 👈 DEBUG
-
+            
             const selection = editor.getSelection();
 
             if (!selection || selection.isEmpty()) {
@@ -48,10 +46,7 @@ export default function SelectionToolbar({ editorRef, onAsk, isEditorReady }: Se
 
             const text = editor.getModel()?.getValueInRange(selection) ?? "";
 
-            console.log("SELECTED TEXT:", text); // 👈 DEBUG
-
             if (text.trim().length < 1) return;
-
             setSelectedCode(text);
 
             try {
@@ -77,7 +72,7 @@ export default function SelectionToolbar({ editorRef, onAsk, isEditorReady }: Se
         });
 
         return () => disposable.dispose();
-    }, [isEditorReady]); // 🔥 CRITICAL CHANGE
+    }, [isEditorReady]); 
 
     // Focus input when ask mode opens
     useEffect(() => {
@@ -100,7 +95,7 @@ export default function SelectionToolbar({ editorRef, onAsk, isEditorReady }: Se
     if (!pos) return null;
 
     const handleAction = (prompt: string) => {
-        console.log("ACTION CLICKED", prompt, selectedCode);
+        
         onAsk(prompt, selectedCode);
         setPos(null);
         setAskMode(false);
@@ -185,12 +180,13 @@ export default function SelectionToolbar({ editorRef, onAsk, isEditorReady }: Se
                     <button
                         onClick={handleCustomAsk}
                         disabled={!customQ.trim()}
-                        className="w-5 h-5 flex items-center justify-center rounded
-                                   bg-white text-gray-900 text-xs font-bold
-                                   disabled:opacity-30 hover:bg-white/90
-                                   transition-all cursor-pointer"
+                        className="w-6 h-6 flex items-center justify-center rounded-md
+                               bg-white text-gray-900
+                               disabled:opacity-25 hover:bg-yellow-500 active:scale-95
+                               transition-all duration-150 shrink-0 mb-0.5 cursor-pointer
+                               disabled:cursor-not-allowed"
                     >
-                        ↑
+                        <IoSend size={14} />
                     </button>
                 </div>
             )}
