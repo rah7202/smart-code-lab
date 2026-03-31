@@ -1,6 +1,3 @@
-// src/components/LanguageBadge.tsx
-// Drop into your Navbar or EditorPage header — shows current language with color
-
 import { getLanguageByValue } from "../languageOptions";
 
 interface LanguageBadgeProps {
