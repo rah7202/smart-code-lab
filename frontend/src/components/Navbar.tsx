@@ -44,7 +44,6 @@ export default function Navbar({
    
     const themeRef = useRef<HTMLDivElement>(null);
     const langRef = useRef<HTMLDivElement>(null);
-    const monacoRef = useRef<typeof import("monaco-editor") | null>(null);
 
     // CLOSE THEME DROPDOWN ON OUTSIDE CLICK
     useEffect(() => {
@@ -210,14 +209,6 @@ export default function Navbar({
                                     onClick={() => {
                                         setUserTheme(t.value);
                                         setThemeOpen(false);
-
-                                        const monacoInstance = monacoRef.current;
-                                        if (!monacoInstance) return;
-                                        if (t.value === "light") {
-                                            monacoInstance.editor.setTheme("light");
-                                        } else {
-                                            monacoInstance.editor.setTheme(getLanguageByValue(userLang).monacoTheme);
-                                        }
                                     }}
                                     className={dropdownBtn(userTheme === t.value)}
                                 >
