@@ -44,12 +44,16 @@ export function useAI({ userCode, userLang, roomId }: UseAIProps) {
 
     useEffect(() => {
         const fetchHistory = async () => {
-            const res = await axios.get(`${URL}/ai/history/${roomId}`);
-            setHistory(res.data);
+            try {
+                const res = await axios.get(`${URL}/ai/history/${roomId}`);
+                setHistory(res.data);
+            } catch (e) {
+                console.error("FETCH ERROR:", e); // This will show up in your Vitest terminal
+            }
         };
-
         if (roomId) fetchHistory();
     }, [roomId]);
+
 
     const canAskAi = () => {
         const now = Date.now();
@@ -64,15 +68,46 @@ export function useAI({ userCode, userLang, roomId }: UseAIProps) {
     };
 
     const startCooldownTicker = () => {
-        if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+        // Always clear any existing interval first
+        if (cooldownTimer.current) {
+            clearInterval(cooldownTimer.current);
+            cooldownTimer.current = null;
+        }
+
         cooldownTimer.current = setInterval(() => {
-            if (!aiTimestamps.current.length) { setRateCooldown(0); return; }
+        // If no timestamps exist, reset cooldown and stop the interval
+        if (!aiTimestamps.current.length) { 
+                setRateCooldown(0); 
+                if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+                cooldownTimer.current = null;
+                return; 
+        }
+
             const oldest = aiTimestamps.current[0];
-            const secs = Math.ceil((RATE_LIMIT_WINDOW - (Date.now() - oldest)) / 1000);
-            setRateCooldown(Math.max(0, secs));
-            if (secs <= 0 && cooldownTimer.current) clearInterval(cooldownTimer.current);
+            const now = Date.now();
+            const elapsed = now - oldest;
+            const remaining = RATE_LIMIT_WINDOW - elapsed;
+            const secs = Math.ceil(remaining / 1000);
+
+            // If cooldown has finished
+            if (secs <= 0) {
+                setRateCooldown(0);
+                if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+                cooldownTimer.current = null;
+            } else {
+                setRateCooldown(secs);
+            }
         }, 500);
     };
+
+    useEffect(() => {
+        // Cleanup on unmount
+        return () => {
+            if (cooldownTimer.current) {
+                clearInterval(cooldownTimer.current);
+            }
+        };
+    }, []);
 
     // shared rate limit check + request sender
     const sendPrompt = async (prompt: string) => {
