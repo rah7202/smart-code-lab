@@ -88,7 +88,7 @@ describe("POST /compile", () => {
         expect(mockSubmitCode).toHaveBeenCalledWith("print(42)", 71, "some input");
     });
 
-    it("returns 500 with { err } when Judge0 service throws", async () => {
+    it("returns 500 with { error } when Judge0 service throws", async () => {
         mockSubmitCode.mockRejectedValueOnce(new Error("Judge0 timeout"));
 
         const res = await request(app)
