@@ -27,8 +27,6 @@ export default function Home() {
         socket.io.opts.query = { RoomId: roomId, username };
         socket.connect();
 
-        //socket.emit("join", { RoomId: roomId, username });
-
         navigate(`/editor/${roomId}`, { state: { username } });
         toast.success("Joined room successfully");
     };
