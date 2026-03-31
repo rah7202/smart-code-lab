@@ -63,7 +63,7 @@ int main() {
 ];
 
 // Register custom Monaco themes — call this once after Monaco loads
-export function registerMonacoThemes(monaco: any) {
+export function registerMonacoThemes(monaco: typeof import("monaco-editor")) {
     // Python — deep blue tones
     monaco.editor.defineTheme("python-theme", {
         base: "vs-dark",

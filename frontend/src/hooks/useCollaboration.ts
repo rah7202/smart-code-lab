@@ -76,7 +76,10 @@ export function useCollaboration({
 
         // User list updated (join / leave)
         socket.on("users", (updatedUsers: User[]) => {
-            const currentSocketIds = new Set(updatedUsers.map(u => u.socketId));
+            const unique = [...new Map(updatedUsers.map(u => [u.socketId, u])).values()];
+            setUsers(updatedUsers);
+
+            const currentSocketIds = new Set(unique.map(u => u.socketId));
 
             // Clean up decorations for users who left
             decorationsRef.current.forEach((decs, socketId) => {
@@ -87,8 +90,8 @@ export function useCollaboration({
                 }
             });
 
-            setUsers(updatedUsers);
-            const me = updatedUsers.find(u => u.username === username);
+            setUsers(unique);
+            const me = unique.find(u => u.username === username);
             if (me) myColor.current = me.color;
         });
 

@@ -1,6 +1,3 @@
-
-
-
 import { Server } from "socket.io";
 import { User, JoinRoomPayload, RoomPayload } from "../types";  
 import { logger } from "../utils/logger";
@@ -10,7 +7,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "http://localhost:5173")
     .split(",")
     .map((o) => o.trim());
 
-const RoomToUsers = new Map<string, User[]>();
+const RoomToUsers = new Map<string, Map<string, User>>(); 
 const RoomToContent = new Map<string, RoomPayload>();
 const SocketToRoom = new Map<string, string>();
 const SocketToColor = new Map<string, string>();
@@ -29,7 +26,6 @@ export const initSocket = (server: http.Server) => {
             credentials: true,
         },
     });
-
     
     io.on("connection", (socket) => {
         logger.info("[SOCKET] Client connected", { socketId: socket.id});
@@ -41,26 +37,31 @@ export const initSocket = (server: http.Server) => {
                 return;
             }
 
+            if (SocketToRoom.has(socket.id)) return;
+
             socket.join(RoomId);
             SocketToRoom.set(socket.id, RoomId); 
+                        
+            let room = RoomToUsers.get(RoomId);
+
+            if (!room) {
+                room = new Map();
+                RoomToUsers.set(RoomId, room);
+            }
+
+            const color = USER_COLORS[room.size % USER_COLORS.length] ?? "#4ECDCA";
             
-            
-            const existing = RoomToUsers.get(RoomId) ?? [];
-            const color = USER_COLORS[existing.length % USER_COLORS.length] ?? "#4ECDC4";
-            const updated = [...existing, {username, color, socketId: socket.id}];
-            RoomToUsers.set(RoomId, updated as User[]);
+            room.set(socket.id, { username, socketId: socket.id, color});
             SocketToColor.set(socket.id, color);
 
-            io.to(RoomId).emit("users", updated);
-
+            const userArray = Array.from(room.values());
+            
+            io.to(RoomId).emit("users", userArray);
+            
             const content = RoomToContent.get(RoomId);
             if (content?.code) {
                 socket.emit("code-sync", content.code);
             }
-
-            // if (content?.language) {
-            //     socket.emit("language-sync", content.language);
-            // }
 
             logger.info("[SOCKET] User joined room", { socketId: socket.id, RoomId, username });
         });
@@ -91,9 +92,19 @@ export const initSocket = (server: http.Server) => {
             const roomId = SocketToRoom.get(socket.id);
 
             if (roomId) {
-                const users = (RoomToUsers.get(roomId) ?? []).filter((u) => u.socketId !== socket.id);
-                RoomToUsers.set(roomId, users);
-                io.to(roomId).emit("users", users);
+                
+                let room = RoomToUsers.get(roomId);
+                if (room) {
+                    room.delete(socket.id);
+
+                    const userArray = Array.from(room.values());
+                    io.to(roomId).emit("users", userArray);
+
+                    if (room.size === 0) {
+                        RoomToUsers.delete(roomId);
+                    }
+                }
+
                 SocketToRoom.delete(socket.id);
                 SocketToColor.delete(socket.id);
 
