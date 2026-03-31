@@ -17,6 +17,12 @@ interface AIMessage {
     content: string;
 }
 
+interface CodeProps {
+    inline?: boolean;
+    className?: string;
+    children?: React.ReactNode;
+}
+
 interface AIPanelProps {
     roomId: string;
     mode: "code" | "selection" | "question";
@@ -88,7 +94,7 @@ export default function AIPanel({
                     <span className="leading-relaxed">{children}</span>
                     </li>
                 ),
-            code({ inline, className, children }: any) {
+            code({ inline, className, children }: CodeProps) {
                 const match = /language-(\w+)/.exec(className || "");
                 const codeText = String(children).replace(/\n$/, "");
                     return !inline && match ? (
