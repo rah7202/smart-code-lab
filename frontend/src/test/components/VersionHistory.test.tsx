@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import VersionHistory from "../../components/VersionHistory";
 
-vi.mock("axios");
 import axios from "axios";
-const mockAxios = axios as unknown as { get: ReturnType<typeof vi.fn> };
+// axios.create() is mocked in setup.ts; use any to avoid strict ReturnType typing issues.
+const mockAxios = axios.create() as any;
 
 const mockSnapshots = [
     {
@@ -93,7 +93,7 @@ describe("VersionHistory — restore", () => {
         });
 
         // Click the first snapshot card
-        fireEvent.click(screen.getAllByText("python")[0].closest(".cursor-pointer")!);
+        act(() => fireEvent.click(screen.getAllByText("python")[0].closest(".cursor-pointer")!));
 
         expect(defaultProps.onRestore).toHaveBeenCalledWith(mockSnapshots[0]);
     });
@@ -104,7 +104,7 @@ describe("VersionHistory — restore", () => {
             expect(screen.getByText("javascript")).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByText("javascript").closest(".cursor-pointer")!);
+        act(() => fireEvent.click(screen.getByText("javascript").closest(".cursor-pointer")!));
 
         expect(defaultProps.onRestore).toHaveBeenCalledWith(mockSnapshots[1]);
     });
