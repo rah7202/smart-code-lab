@@ -1,16 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import debounce from "lodash.debounce";
-import axios from "axios";
+import api from "../lib/authAxios";
 import toast from "react-hot-toast";
 import { socket } from "../socket";
 import { getLanguageByValue } from "../languageOptions";
 import { editor } from "monaco-editor";
 
-const URL = import.meta.env.VITE_BACKEND_URL;
-
 interface UseEditorPersistenceProps {
     roomId: string;
-    username: string;
     userLang: string;
     setUserLang: (lang: string) => void;
     editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
@@ -18,9 +15,10 @@ interface UseEditorPersistenceProps {
     onLoad?: (code: string, lang: string) => void; // EditorPage applies imperatively
 }
 
+const URL = import.meta.env.VITE_BACKEND_URL;
+
 export function useEditorPersistence({
     roomId,
-    username,
     userLang,
     setUserLang,
     editorRef,
@@ -37,7 +35,7 @@ export function useEditorPersistence({
     // ── Init debounced DB save ────────────────────────────────────────────────
     useEffect(() => {
         saveRef.current = debounce((code: string, language: string) => {
-            axios.post(`${URL}/room/${roomId}/save`, { code, language });
+            api.post(`/room/${roomId}/save`, { code, language });
         }, 2000);
         return () => saveRef.current?.cancel();
     }, [roomId]);
@@ -47,7 +45,7 @@ export function useEditorPersistence({
         if (!roomId) return;
         const load = async () => {
             try {
-                const res = await axios.get(`${URL}/room/${roomId}`);
+                const res = await api.get(`/room/${roomId}`);
                 const lang = res.data.language || "javascript";
                 const code = res.data.code || getLanguageByValue(lang).starterCode;
 
@@ -89,8 +87,7 @@ export function useEditorPersistence({
     useEffect(() => {
         const handleBeforeLeave = () => {
             
-            navigator.sendBeacon(
-                `${URL}/snapshot/${roomId}`,
+            navigator.sendBeacon(`${URL}/snapshot/${roomId}`,
                 new Blob([JSON.stringify({ code: userCode, language: userLang })], 
                         { type: "application/json" })
             );
@@ -106,7 +103,7 @@ export function useEditorPersistence({
         if (!userCode) { toast("No Code to Save", { icon: "ℹ️" }); return; }
 
         try {
-            await axios.post(`${URL}/snapshot/${roomId}`, {
+            await api.post(`/snapshot/${roomId}`, {
                 code: userCode,
                 language: userLang,
             });
@@ -128,39 +125,39 @@ export function useEditorPersistence({
         isLanguageSwitching.current = false;
 
         socket.emit("content-edited", { code, language });
-        axios.post(`${URL}/room/${roomId}/save`, { code, language });
+        api.post(`/room/${roomId}/save`, { code, language });
         setRefreshHistory(prev => prev + 1);
         toast.success("Snapshot restored");
     };
 
     // ── Clear editor ──────────────────────────────────────────────────────────
     const handleClearEditor = async () => {
-    const currentCode = editorRef.current?.getValue() || userCode;
+        const currentCode = editorRef.current?.getValue() || userCode;
 
-    if (!currentCode || currentCode.trim() === "") {
-        toast("Nothing to clear", { icon: "ℹ️" });
-        return;
-    }
+        if (!currentCode || currentCode.trim() === "") {
+            toast("Nothing to clear", { icon: "ℹ️" });
+            return;
+        }
 
-    isLanguageSwitching.current = true;
+        isLanguageSwitching.current = true;
 
-    setUserCode("");
-    editorRef.current?.setValue("");
+        setUserCode("");
+        editorRef.current?.setValue("");
 
-    isLanguageSwitching.current = false;
+        isLanguageSwitching.current = false;
 
-    socket.emit("content-edited", { code: "", language: userLang });
+        socket.emit("content-edited", { code: "", language: userLang });
 
-    try {
-        await axios.post(`${URL}/room/${roomId}/save`, {
-            code: "",
-            language: userLang,
-        });
-        toast.success("Editor cleared");
-    } catch {
-        toast.error("Failed to clear editor");
-    }
-};
+        try {
+            await api.post(`/room/${roomId}/save`, {
+                code: "",
+                language: userLang,
+            });
+            toast.success("Editor cleared");
+        } catch {
+            toast.error("Failed to clear editor");
+        }
+    };
 
     // ── Download ──────────────────────────────────────────────────────────────
     const handleDownloadCode = () => {
@@ -171,7 +168,8 @@ export function useEditorPersistence({
         };
 
         const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-        const filename = `${username}-${timestamp}.${ext[userLang] ?? "txt"}`;
+        // const filename = `${username}-${timestamp}.${ext[userLang] ?? "txt"}`;
+        const filename = `${timestamp}.${ext[userLang] ?? "txt"}`;
         const blob = new Blob([userCode], { type: "text/plain" });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
