@@ -1,6 +1,5 @@
 import { render, screen, act, fireEvent } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
-//import { MemoryRouter } from "react-router";
 import { MemoryRouter } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
