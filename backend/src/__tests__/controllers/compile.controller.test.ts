@@ -5,9 +5,17 @@
 //   - response: { output, status, time }
 //   - error response: { error: "Compilation Failed" }
 
+jest.mock("../../middleware/auth.middleware", () => ({
+    authenticate: (req: any, _res: any, next: any) => {
+        req.user = { userId: "test-user-id", username: "testuser" };
+        next();
+    },
+}));
+
 import request from "supertest";
 import express from "express";
 import compileRoutes from "../../routes/compile.route";
+
 
 jest.mock("../../services/judge0.service");
 import { submitCode } from "../../services/judge0.service";
