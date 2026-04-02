@@ -10,8 +10,6 @@ import { socket } from "../../socket";
 // 1. MOCKS
 // ─────────────────────────────────────────────────────────────────────────────
 
-vi.mock("axios");
-
 vi.mock("react-hot-toast", () => {
     const toastMock = vi.fn();
     Object.assign(toastMock, {
