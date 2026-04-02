@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-
-const URL = import.meta.env.VITE_BACKEND_URL;
+import api from "../lib/authAxios";
 
 interface Snapshot {
     id: string;
@@ -21,7 +19,7 @@ export default function VersionHistory({ roomId, onRestore, refreshTrigger }: Pr
 
     useEffect(() => {
         const fetchSnapshots = async () => {
-            const res = await axios.get(`${URL}/snapshot/${roomId}`);
+            const res = await api.get(`/snapshot/${roomId}`);
             setSnapshots(res.data);
         };
 
