@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import AIPanel from "../../components/AIPanel";
 
 vi.mock("../../assets/geminiLogo.png", () => ({ default: "gemini-logo.png" }));
-vi.mock("axios");
 
 vi.mock("react-hot-toast", () => {
   const toastMock = vi.fn(); // The default export (toast("..."))
@@ -20,7 +19,8 @@ vi.mock("react-hot-toast", () => {
 import axios from "axios";
 import toast from "react-hot-toast";
 
-const mockAxios = axios as unknown as { delete: ReturnType<typeof vi.fn> };
+// axios.create() is mocked in setup.ts; use a loose typing here so we can assign mock methods safely.
+const mockAxios = axios.create() as any;
 
 const mockBottomRef = { current: null } as React.RefObject<HTMLDivElement | null>;
 const mockOutputRef = { current: null } as React.RefObject<HTMLDivElement | null>;
@@ -221,7 +221,7 @@ describe("AIPanel — clear chat", () => {
 
     it("calls DELETE /ai/history/:roomId and setHistory([]) on clear", async () => {
         renderPanel({ history: [{ role: "user", content: "hi" }] });
-        fireEvent.click(screen.getByText("Clear"));
+        act(() => fireEvent.click(screen.getByText("Clear")));
 
         await waitFor(() => {
             expect(mockAxios.delete).toHaveBeenCalledWith(
@@ -236,7 +236,7 @@ describe("AIPanel — clear chat", () => {
         mockAxios.delete = vi.fn().mockRejectedValue(new Error("Server error"));
         renderPanel({ history: [{ role: "user", content: "hi" }] });
 
-        fireEvent.click(screen.getByText("Clear"));
+        act(() => fireEvent.click(screen.getByText("Clear")));
 
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("Failed to clear chat");
@@ -245,7 +245,7 @@ describe("AIPanel — clear chat", () => {
 
     it("does not call DELETE when history is already empty", async () => {
         renderPanel({ history: [] });
-        fireEvent.click(screen.getByText("Clear"));
+        act(() => fireEvent.click(screen.getByText("Clear")));
 
         await waitFor(() => {
             expect(mockAxios.delete).not.toHaveBeenCalled();
