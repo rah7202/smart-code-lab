@@ -2,6 +2,14 @@
 // Integration tests that mount the full app — tests CORS, rate limiting,
 // global error handler, and health check endpoint.
 
+import jwt from "jsonwebtoken";
+
+const TEST_TOKEN = jwt.sign(
+    { userId: "test-user", username: "testuser" },
+    "test-secret-key-for-jest", // matches envSetup.ts
+    { expiresIn: "1h" }
+);
+
 jest.mock("../db/prisma", () => ({
     prisma: {
         aIMessage: { create: jest.fn(), findMany: jest.fn(), deleteMany: jest.fn() },
@@ -117,7 +125,8 @@ describe("Rate limiting", () => {
         let aiLimitHit = false;
         for (let i = 0; i < 15; i++) {
             const res = await request(app)
-                .post("/ai/generate")
+                .post("/api/ai/generate")
+                .set("Authorization", `Bearer ${TEST_TOKEN}`)
                 .send({ prompt: "test", roomId: "room-1" });
 
             if (res.status === 429 && res.body.error === "AI rate limit reached. Try again in a minute.") {
