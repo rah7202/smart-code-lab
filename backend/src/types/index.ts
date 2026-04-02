@@ -11,7 +11,6 @@ export type User = {
 
 export type JoinRoomPayload = {
     RoomId: string;
-    username: string;
 };
 
 export type RoomPayload ={
