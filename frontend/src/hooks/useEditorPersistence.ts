@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { socket } from "../socket";
 import { getLanguageByValue } from "../languageOptions";
 import { editor } from "monaco-editor";
+import { getUserFromToken } from "../utils/auth";
 
 interface UseEditorPersistenceProps {
     roomId: string;
@@ -31,6 +32,9 @@ export function useEditorPersistence({
     const [refreshHistory, setRefreshHistory] = useState(0);
     const isLanguageSwitching = useRef(false);
     const saveRef = useRef<ReturnType<typeof debounce<(code: string, lang: string) => void>> | null>(null);
+
+    const user = getUserFromToken();
+    const name = user?.username?.charAt(0).toUpperCase() + user?.username?.slice(1);
 
     // ── Init debounced DB save ────────────────────────────────────────────────
     useEffect(() => {
@@ -168,8 +172,8 @@ export function useEditorPersistence({
         };
 
         const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-        // const filename = `${username}-${timestamp}.${ext[userLang] ?? "txt"}`;
-        const filename = `${timestamp}.${ext[userLang] ?? "txt"}`;
+        const filename = `${name}-${timestamp}.${ext[userLang] ?? "txt"}`;
+        //const filename = `${timestamp}.${ext[userLang] ?? "txt"}`;
         const blob = new Blob([userCode], { type: "text/plain" });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
