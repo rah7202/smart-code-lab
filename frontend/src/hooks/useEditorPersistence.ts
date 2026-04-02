@@ -173,7 +173,6 @@ export function useEditorPersistence({
 
         const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
         const filename = `${name}-${timestamp}.${ext[userLang] ?? "txt"}`;
-        //const filename = `${timestamp}.${ext[userLang] ?? "txt"}`;
         const blob = new Blob([userCode], { type: "text/plain" });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
