@@ -2,12 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 
 // ── Mocks — must be before imports ────────────────────────────────────────
-vi.mock("axios", () => ({
-    default: {
-        get: vi.fn(),
-        post: vi.fn(),
-    },
-}));
 
 vi.mock("react-hot-toast", () => ({
     default: { error: vi.fn(), success: vi.fn() },
