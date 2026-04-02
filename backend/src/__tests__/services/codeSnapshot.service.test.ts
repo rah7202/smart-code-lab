@@ -1,5 +1,3 @@
-
-
 jest.mock("../../db/prisma", () => ({
     prisma: {
         codeSnapshot: {
@@ -7,6 +5,13 @@ jest.mock("../../db/prisma", () => ({
             findFirst: jest.fn(),
             findMany:  jest.fn(),
         },
+    },
+}));
+
+jest.mock("../../middleware/auth.middleware", () => ({
+    authenticate: (req: any, _res: any, next: any) => {
+        req.user = { userId: "test-user-id", username: "testuser" };
+        next();
     },
 }));
 
