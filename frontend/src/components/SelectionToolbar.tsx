@@ -112,7 +112,7 @@ export default function SelectionToolbar({ editorRef, onAsk, isEditorReady }: Se
     return (
         <div
             ref={toolbarRef}
-            className="fixed z-[9999] flex flex-col gap-1"
+            className="fixed z-9999 flex flex-col gap-1"
             style={{ top: pos.top, left: pos.left }}
         >
             {/* Main pill toolbar */}
@@ -175,7 +175,7 @@ export default function SelectionToolbar({ editorRef, onAsk, isEditorReady }: Se
                         }}
                         placeholder="Ask about selected code…"
                         className="flex-1 bg-transparent text-xs text-white/80
-                                   placeholder:text-white/25 outline-none min-w-[200px]"
+                                   placeholder:text-white/25 outline-none min-w-50"
                     />
                     <button
                         onClick={handleCustomAsk}
