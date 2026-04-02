@@ -9,19 +9,24 @@ jest.mock("../../db/prisma", () => ({
 }));
 
 jest.mock("../../services/room.service", () => ({
-    getOrCreateRoom: jest.fn(),
+    getRoomById: jest.fn(),
+    makeRoom: jest.fn(),
 }));
 
 import request from "supertest";
+import jwt from "jsonwebtoken"
 import express from "express";
 import roomRoutes from "../../routes/room.route";
-import { getOrCreateRoom } from "../../services/room.service";
+import { makeRoom, getRoomById  } from "../../services/room.service";
 import { prisma } from "../../db/prisma";
 
-const mockGetOrCreate = getOrCreateRoom as jest.Mock;
+const mockMakeRoom = makeRoom as jest.Mock;
 const mockUpdate      = prisma.room.update     as jest.Mock;
 const mockFindUnique  = prisma.room.findUnique as jest.Mock;
 const mockCreate      = prisma.room.create     as jest.Mock;
+
+const jwtSecret = process.env.JWT_SECRET || "test-secret-key-for-jest";
+const token = jwt.sign({ userId: "test-user" }, jwtSecret);
 
 const app = express();
 app.use(express.json());
@@ -29,12 +34,14 @@ app.use("/", roomRoutes);
 
 beforeEach(() => jest.clearAllMocks());
 
+
+
 // ── room.service unit tests ───────────────────────────────────────────────────
 
-describe("room.service — getOrCreateRoom", () => {
+describe("room.service — makeRoom", () => {
 
-    const { getOrCreateRoom: realGetOrCreate } =
-        jest.requireActual("../../services/room.service");
+    const { getRoomById: realGetRoomById, makeRoom: realMakeRoom } =
+    jest.requireActual("../../services/room.service");
 
     it("returns existing room when found", async () => {
         const existing = {
@@ -45,7 +52,7 @@ describe("room.service — getOrCreateRoom", () => {
         };
         mockFindUnique.mockResolvedValueOnce(existing);
 
-        const result = await realGetOrCreate("room-123");
+        const result = await realGetRoomById("room-123");
 
         expect(result).toEqual(existing);
         expect(mockFindUnique).toHaveBeenCalledWith({ where: { id: "room-123" } });
@@ -57,7 +64,7 @@ describe("room.service — getOrCreateRoom", () => {
         const created = { id: "room-new", code: "", language: "javascript", createdAt: new Date() };
         mockCreate.mockResolvedValueOnce(created);
 
-        const result = await realGetOrCreate("room-new");
+        const result = await realMakeRoom("room-new");
 
         expect(mockCreate).toHaveBeenCalledWith({
             data: { id: "room-new", language: "javascript", code: "" },
@@ -68,23 +75,25 @@ describe("room.service — getOrCreateRoom", () => {
 
     it("propagates DB errors", async () => {
         mockFindUnique.mockRejectedValueOnce(new Error("DB down"));
-        await expect(realGetOrCreate("room-err")).rejects.toThrow("DB down");
+        await expect(realMakeRoom("room-err")).rejects.toThrow("DB down");
     });
 });
 
 // ── GET /room/:roomId — getRoomData ───────────────────────────────────────────
 
-describe("GET /room/:roomId — getRoomData", () => {
+describe("GET /room/:roomId — getRoomById", () => {
 
     it("returns roomId, language, code when room exists", async () => {
-        mockGetOrCreate.mockResolvedValueOnce({
+        mockMakeRoom.mockResolvedValueOnce({
             id: "room-123",
             code: 'console.log("hi")',
             language: "javascript",
             createdAt: new Date(),
         });
 
-        const res = await request(app).get("/room-123");
+        const res = await request(app)
+        .get("/room-123")
+        .set("Authorization", `Bearer ${token}`);;
 
         expect(res.status).toBe(200);
         expect(res.body.roomId).toBe("room-123");
@@ -93,14 +102,16 @@ describe("GET /room/:roomId — getRoomData", () => {
     });
 
     it("creates and returns new room if not found", async () => {
-        mockGetOrCreate.mockResolvedValueOnce({
+        mockMakeRoom.mockResolvedValueOnce({
             id: "room-new",
             code: "",
             language: "javascript",
             createdAt: new Date(),
         });
 
-        const res = await request(app).get("/room-new");
+        const res = await request(app)
+        .get("/room-new")
+        .set("Authorization", `Bearer ${token}`);
 
         expect(res.status).toBe(200);
         expect(res.body.roomId).toBe("room-new");
@@ -108,9 +119,11 @@ describe("GET /room/:roomId — getRoomData", () => {
     });
 
     it("returns 500 with { error } when service throws", async () => {
-        mockGetOrCreate.mockRejectedValueOnce(new Error("DB connection lost"));
+        mockMakeRoom.mockRejectedValueOnce(new Error("DB connection lost"));
 
-        const res = await request(app).get("/room-err");
+        const res = await request(app)
+        .get("/room-err")
+        .set("Authorization", `Bearer ${token}`);
 
         expect(res.status).toBe(500);
         expect(res.body.error).toBe("Failed to load room");
@@ -122,12 +135,17 @@ describe("GET /room/:roomId — getRoomData", () => {
 describe("POST /:roomId/save — saveRoomCode", () => {
 
     it("updates room and returns { success: true }", async () => {
+        mockFindUnique.mockResolvedValueOnce({
+            id: "room-123", code: "console.log('hi')", language: "javascript", createdAt: new Date(), userId: "test-user",
+        });
+
         mockUpdate.mockResolvedValueOnce({
             id: "room-123", code: "print('hi')", language: "python", createdAt: new Date(),
         });
 
         const res = await request(app)
             .post("/room-123/save")
+            .set("Authorization", `Bearer ${token}`)
             .send({ code: "print('hi')", language: "python" }); // ✅ valid enum value
 
         expect(res.status).toBe(200);
@@ -139,10 +157,14 @@ describe("POST /:roomId/save — saveRoomCode", () => {
     });
 
     it("returns 500 with { error } when DB update fails", async () => {
+        mockFindUnique.mockResolvedValueOnce({
+            id: "room-123", code: "console.log('hi')", language: "javascript", createdAt: new Date(), userId: "test-user",
+        });
         mockUpdate.mockRejectedValueOnce(new Error("Record not found"));
 
         const res = await request(app)
             .post("/room-123/save")
+            .set("Authorization", `Bearer ${token}`)
             .send({ code: "code", language: "javascript" }); // ✅ valid enum value
 
         expect(res.status).toBe(500);
@@ -152,6 +174,7 @@ describe("POST /:roomId/save — saveRoomCode", () => {
     it("returns 400 when language is invalid", async () => {
         const res = await request(app)
             .post("/room-123/save")
+            .set("Authorization", `Bearer ${token}`)
             .send({ code: "code", language: "ruby" }); // ❌ not in enum
 
         expect(res.status).toBe(400);
