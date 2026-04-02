@@ -80,4 +80,4 @@ export const saveRoomCode = async (req: AuthRequest, res: Response) => {
     } catch  {
         res.status(500).json({ error: "Failed to save room" });
     }
-};
+}; 
