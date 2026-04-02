@@ -5,6 +5,9 @@ const config: Config = {
     testEnvironment: "node",
     roots: ["<rootDir>/src"],
     testMatch: ["**/__tests__/**/*.test.ts"],
+
+    setupFiles: ["<rootDir>/src/__tests__/envSetup.ts"],
+
     collectCoverageFrom: [
         "src/**/*.ts",
         "!src/index.ts",

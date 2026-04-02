@@ -1,7 +1,6 @@
 import { render, screen, act, fireEvent } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
-//import { MemoryRouter } from "react-router";
-import { MemoryRouter, useLocation } from "react-router";
+import { MemoryRouter } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import EditorPage from "../../components/EditorPage"; // Adjust path if needed
@@ -25,7 +24,6 @@ vi.mock("react-router", async () => {
 });
 
 // Mock Axios & Toast
-vi.mock("axios");
 vi.mock("react-hot-toast", () => ({
     default: { error: vi.fn(), success: vi.fn() }
 }));
@@ -141,20 +139,6 @@ describe("EditorPage", () => {
         Storage.prototype.getItem = vi.fn(() => null);
     });
 
-    it("redirects to home if no username is provided", () => {
-       vi.mocked(useLocation).mockReturnValueOnce({ 
-            state: {}, 
-            key: "default", 
-            pathname: "/", 
-            search: "", 
-            hash: "" 
-        } as any);
-        
-        render(<MemoryRouter><EditorPage /></MemoryRouter>);
-
-        expect(toast.error).toHaveBeenCalledWith("Please enter your username to continue");
-        expect(mockNavigate).toHaveBeenCalledWith("/");
-    });
 
     it("renders components when authenticated", () => {
         render(<MemoryRouter><EditorPage /></MemoryRouter>);

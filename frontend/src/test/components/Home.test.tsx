@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Home from "../../components/Home";
+import api from "../../lib/authAxios";
 
 // Mock socket
 vi.mock("../../socket", () => ({
@@ -52,6 +53,7 @@ describe("Home", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         localStorage.clear();
+        vi.spyOn(api, "post").mockResolvedValue({ data: { roomId: "test-uuid-1234" } });
     });
 
     it("renders the Smart Code Lab heading", () => {
@@ -59,15 +61,14 @@ describe("Home", () => {
         expect(screen.getByText("Smart Code Lab")).toBeInTheDocument();
     });
 
-    it("renders Room ID and Username inputs", () => {
+    it("renders Room ID input", () => {
         renderHome();
         expect(screen.getByPlaceholderText("Room ID")).toBeInTheDocument();
-        expect(screen.getByPlaceholderText("Username")).toBeInTheDocument();
     });
 
-    it("renders JOIN button", () => {
+    it("renders Join Room button", () => {
         renderHome();
-        expect(screen.getByText("JOIN")).toBeInTheDocument();
+        expect(screen.getByText("Join Room")).toBeInTheDocument();
     });
 
     it("renders Create a new room link", () => {
@@ -86,57 +87,30 @@ describe("Home", () => {
         });
     });
 
-    it("shows error toast when joining with empty fields", async () => {
+    it("shows error toast when joining with empty room ID", async () => {
         const toast = await import("react-hot-toast");
         renderHome();
-        fireEvent.click(screen.getByText("JOIN"));
-        expect(toast.default.error).toHaveBeenCalledWith("Please enter room ID and username");
+        fireEvent.click(screen.getByText("Join Room"));
+        expect(toast.default.error).toHaveBeenCalledWith("Please enter a room ID");
     });
 
-    it("shows error when only username is missing", async () => {
+    it("shows error when room ID is missing", async () => {
         const toast = await import("react-hot-toast");
         renderHome();
-        fireEvent.change(screen.getByPlaceholderText("Room ID"), {
-            target: { value: "some-room-id" },
-        });
-        fireEvent.click(screen.getByText("JOIN"));
-        expect(toast.default.error).toHaveBeenCalledWith("Please enter room ID and username");
-    });
-
-    it("shows error when only room ID is missing", async () => {
-        const toast = await import("react-hot-toast");
-        renderHome();
-        fireEvent.change(screen.getByPlaceholderText("Username"), {
-            target: { value: "rahul" },
-        });
-        fireEvent.click(screen.getByText("JOIN"));
-        expect(toast.default.error).toHaveBeenCalledWith("Please enter room ID and username");
-    });
-
-    it("saves username to localStorage on successful join", async () => {
-        renderHome();
-        fireEvent.change(screen.getByPlaceholderText("Room ID"), {
-            target: { value: "room-abc" },
-        });
-        fireEvent.change(screen.getByPlaceholderText("Username"), {
-            target: { value: "rahul" },
-        });
-        fireEvent.click(screen.getByText("JOIN"));
-        expect(localStorage.getItem("username")).toBe("rahul");
+        fireEvent.click(screen.getByText("Join Room"));
+        expect(toast.default.error).toHaveBeenCalledWith("Please enter a room ID");
     });
 
     it("navigates to editor on successful join", async () => {
+        // Mock localStorage to have token
+        Storage.prototype.getItem = vi.fn((key) => key === "token" ? "mock-token" : null);
+        
         renderHome();
         fireEvent.change(screen.getByPlaceholderText("Room ID"), {
             target: { value: "room-abc" },
         });
-        fireEvent.change(screen.getByPlaceholderText("Username"), {
-            target: { value: "rahul" },
-        });
-        fireEvent.click(screen.getByText("JOIN"));
-        expect(mockNavigate).toHaveBeenCalledWith("/editor/room-abc", {
-            state: { username: "rahul" },
-        });
+        fireEvent.click(screen.getByText("Join Room"));
+        expect(mockNavigate).toHaveBeenCalledWith("/editor/room-abc");
     });
 
     it("updates room ID input when typed", () => {
@@ -144,12 +118,5 @@ describe("Home", () => {
         const input = screen.getByPlaceholderText("Room ID") as HTMLInputElement;
         fireEvent.change(input, { target: { value: "my-room" } });
         expect(input.value).toBe("my-room");
-    });
-
-    it("updates username input when typed", () => {
-        renderHome();
-        const input = screen.getByPlaceholderText("Username") as HTMLInputElement;
-        fireEvent.change(input, { target: { value: "testuser" } });
-        expect(input.value).toBe("testuser");
     });
 });
