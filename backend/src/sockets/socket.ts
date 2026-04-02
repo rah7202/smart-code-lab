@@ -82,7 +82,7 @@ export const initSocket = (server: http.Server) => {
             socket.join(RoomId);
             SocketToRoom.set(socket.id, RoomId);
 
-            // 🔥 ROOM PARTICIPANTS (NEW)
+            // ROOM PARTICIPANTS
             if (!RoomParticipants.has(RoomId)) {
                 RoomParticipants.set(RoomId, new Set());
             }
@@ -150,7 +150,7 @@ export const initSocket = (server: http.Server) => {
                 const userId = user?.userId;
                 const room = RoomToUsers.get(roomId);
 
-                // 🔥 REMOVE FROM PARTICIPANTS
+                // REMOVE FROM PARTICIPANTS
                 if (userId) {
                     
                     const stillConnected = Array.from(room?.values() || [])
