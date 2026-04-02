@@ -1,7 +1,10 @@
 import dotenv from "dotenv";
 import { logger } from "./utils/logger";
+
+const envFile = process.env.NODE_ENV === "production" ? ".env.production" : ".env.local";
+
 dotenv.config({
-    path: "./.env"
+    path: envFile
 });
 
 import http from "http";

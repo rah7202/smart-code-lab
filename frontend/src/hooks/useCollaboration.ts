@@ -20,7 +20,6 @@ interface CursorMovePayload {
 
 interface UseCollaborationProps {
     roomId: string;
-    username: string;
     editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
     monacoInstance: React.MutableRefObject<typeof Monaco | null>;
     onCodeChange: (code: string) => void;
@@ -30,7 +29,6 @@ interface UseCollaborationProps {
 
 export function useCollaboration({
     roomId,
-    username,
     editorRef,
     monacoInstance,
     onCodeChange,
@@ -41,26 +39,33 @@ export function useCollaboration({
     const myColor = useRef<string>("#ffffff");
     const decorationsRef = useRef<Map<string, string[]>>(new Map());
 
-    // ── JOIN ROOM ─────────────────────────────────────────────────────────────
-    useEffect(() => {
+    useEffect(()=> {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            toast.error("Please login first");
+            return; // don't attempt connection without token
+        }
+
+        socket.auth = { token: localStorage.getItem("token") };
         socket.connect();
-        socket.emit("join", { RoomId: roomId, username });
 
-        return () => {
-            // Don't disconnect here — Navbar Leave button handles that
-        };
-    }, [roomId, username]);
+        socket.on("connect", () => {
+            socket.emit("join", { RoomId:roomId });
+        });
 
-    // ── SOCKET LISTENERS ──────────────────────────────────────────────────────
-    useEffect(() => {
+        // ✅ Attach listeners FIRST
+        socket.on("users", (updatedUsers: User[]) => {
+            const unique = [...new Map(updatedUsers.map(u => [u.socketId, u])).values()];
+            setUsers(unique);
+
+            const me = unique.find(u => u.socketId === socket.id);
+            if (me) myColor.current = me.color;
+        });
+
 
         // New user joined — send them the current code
         socket.on("code-sync", (code: string) => {
             if (code) onCodeChange(code);
-        });
-
-        socket.on("connect_error", () => {
-            toast.error("Connection failed. Please check your network and try again.");
         });
 
         // A collaborator edited code
@@ -72,27 +77,6 @@ export function useCollaboration({
             }
 
             onCodeChange(code);
-        });
-
-        // User list updated (join / leave)
-        socket.on("users", (updatedUsers: User[]) => {
-            const unique = [...new Map(updatedUsers.map(u => [u.socketId, u])).values()];
-            setUsers(updatedUsers);
-
-            const currentSocketIds = new Set(unique.map(u => u.socketId));
-
-            // Clean up decorations for users who left
-            decorationsRef.current.forEach((decs, socketId) => {
-                if (!currentSocketIds.has(socketId)) {
-                    editorRef.current?.deltaDecorations(decs, []);
-                    decorationsRef.current.delete(socketId);
-                    document.getElementById(`cursor-style-${socketId}`)?.remove();
-                }
-            });
-
-            setUsers(unique);
-            const me = unique.find(u => u.username === username);
-            if (me) myColor.current = me.color;
         });
 
         // A collaborator moved their cursor
@@ -133,14 +117,21 @@ export function useCollaboration({
             injectCursorStyle(socketId, color, remoteUser);
         });
 
+        socket.on("connect_error", () => {
+            toast.error("Connection failed");
+        });
+
         return () => {
+            socket.off("connect");
             socket.off("code-sync");
             socket.off("content-edited");
             socket.off("users");
             socket.off("cursor-move");
             socket.off("connect_error");
+            socket.disconnect();
         };
-    }, [username, onCodeChange, onLangChange]);
+    }, [roomId]);
+
 
     // ── CURSOR STYLE INJECTION ────────────────────────────────────────────────
     const injectCursorStyle = (socketId: string, color: string, name: string) => {
@@ -186,8 +177,6 @@ export function useCollaboration({
         socket.emit("cursor-move", {
             line,
             column,
-            username,
-            color: myColor.current,
         });
     };
 

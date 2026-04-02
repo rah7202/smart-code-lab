@@ -41,3 +41,8 @@ export const snapshotSchema = z.object({
     code: z.string().max(50_000),
     language: z.enum(["javascript", "python", "cpp", "c"]),
 });
+
+export const authSchema = z.object({
+    username: z.string().min(3).max(30),
+    password: z.string().min(6),
+});

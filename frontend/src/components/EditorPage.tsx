@@ -1,9 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import type { OnMount } from "@monaco-editor/react";
-import { useParams, useLocation, useNavigate } from "react-router";
+import { useParams, useNavigate } from "react-router";
 import toast from "react-hot-toast";
-import axios from "axios";
 import type { editor } from "monaco-editor";
 import type * as Monaco from "monaco-editor";
 
@@ -11,14 +10,13 @@ import { registerMonacoThemes, getLanguageByValue } from "../languageOptions";
 import { useCollaboration } from "../hooks/useCollaboration";
 import { useAI } from "../hooks/useAI";
 import { useEditorPersistence } from "../hooks/useEditorPersistence";
+import api from "../lib/authAxios";
 
 import Navbar from "./Navbar";
 import UserPresenceBar from "./UserPresenceBar";
 import Footer from "./Footer";
 import RightPanel from "./RightPanel";
 import SelectionToolbar from "./SelectionToolbar";
-
-const URL = import.meta.env.VITE_BACKEND_URL;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ARCHITECTURE: Monaco is the single source of truth for editor content.
@@ -36,11 +34,7 @@ const URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function EditorPage() {
     const { roomId } = useParams();
-    const location = useLocation();
     const navigate = useNavigate();
-    const username = location.state?.username
-        || localStorage.getItem("username")
-        || "Anonymous";
 
     // ── UI state (mirrors Monaco, does NOT drive it) ──────────────────────────
     const [userLang, setUserLang] = useState<string>("javascript");
@@ -63,11 +57,13 @@ export default function EditorPage() {
 
     // ── Auth guard ────────────────────────────────────────────────────────────
     useEffect(() => {
-        if (!username || username === "Anonymous") {
-            toast.error("Please enter your username to continue");
-            navigate("/");
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+            toast.error("Please login first");
+            navigate("/login");
         }
-    }, [roomId]);
+    }, []);
 
     useEffect(() => {
         userLangRef.current = userLang;
@@ -118,7 +114,6 @@ export default function EditorPage() {
      // ── Persistence hook ──────────────────────────────────────────────────────
     const persistence = useEditorPersistence({
         roomId: roomId!,
-        username,
         userLang,
         setUserLang,
         editorRef,
@@ -133,7 +128,6 @@ export default function EditorPage() {
     // ── Collaboration hook ────────────────────────────────────────────────────
     const { users, emitCursorMove, emitCodeChange } = useCollaboration({
         roomId: roomId!,
-        username,
         editorRef,
         monacoInstance: monacoRef,
         // Called by socket when a collaborator edits code
@@ -155,7 +149,6 @@ export default function EditorPage() {
     });
 
    
-
     // ── AI hook ───────────────────────────────────────────────────────────────
     const ai = useAI({ userCode: persistence.userCode, userLang, roomId: roomId! });
 
@@ -164,12 +157,12 @@ export default function EditorPage() {
         setIsRunning(true);
         try {
             const code = editorRef.current?.getValue() ?? persistence.userCode;
-            const res = await axios.post(`${URL}/compile`, {
+            const res = await api.post(`/compile`, {
                 code,
                 userLangId,
                 input: userInput,
             });
-            await axios.post(`${URL}/snapshot/${roomId}`, { code, language: userLang });
+            await api.post(`/snapshot/${roomId}`, { code, language: userLang });
             persistence.bumpRefreshHistory();
             setUserOutput(res.data.output ?? "No Output");
         } catch {
@@ -203,7 +196,8 @@ export default function EditorPage() {
 
         // Persist to DB
         try {
-            await axios.post(`${URL}/room/${roomId}/save`, {
+            console.log("language change end poin hit in editor Page.tsx");
+            await api.post(`/room/${roomId}/save`, {
                 code: newCode,
                 language: newLang,
             });

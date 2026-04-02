@@ -14,7 +14,7 @@ export default function LanguageBadge({ language }: LanguageBadgeProps) {
                     rounded-md text-xs font-semibold tracking-wide
                     border border-white/10
                     ${lang.badge.bg} ${lang.badge.text}
-                    transition-all duration-300 h-[30px]
+                    transition-all duration-300 h-7.5
       `}
         >
             {/* Colored dot */}

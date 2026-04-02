@@ -6,6 +6,7 @@ import helmet from "helmet";
 import compileRoutes from "./routes/compile.route";
 import aiRoutes from "./routes/ai.route";
 import snapshotRoutes from "./routes/codeSnapshot.routes";
+import authRoutes from "./routes/auth.route";
 import roomRoutes from "./routes/room.route";
 import { logger } from "./utils/logger";
 
@@ -55,10 +56,11 @@ export const aiRateLimiter = rateLimit({
 });
 
 //------------------ROUTES-----------------------------------
-app.use("/compile", compileRoutes);
-app.use("/ai",aiRateLimiter, aiRoutes);
-app.use("/snapshot", snapshotRoutes);
-app.use("/room", roomRoutes);
+app.use("/api/compile", compileRoutes);
+app.use("/api/ai",aiRateLimiter, aiRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/snapshot", snapshotRoutes);
+app.use("/api/room", roomRoutes);
 
 //----HEALTH--CHECK----------------------------------------
 app.get("/health", (_req, res) => {

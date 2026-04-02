@@ -6,11 +6,10 @@ import { FiCopy } from "react-icons/fi";
 import { IoSend } from "react-icons/io5";
 import { AiOutlineClear } from "react-icons/ai";
 import toast from "react-hot-toast";
-import axios from "axios";
+import api from "../lib/authAxios";
+
 import geminiLogo from "../assets/geminiLogo.png";
 import type { Components } from "react-markdown";
-
-const URL = import.meta.env.VITE_BACKEND_URL;
 
 interface AIMessage {
     role: "user" | "ai";
@@ -59,7 +58,7 @@ export default function AIPanel({
             return;
         } 
         try {
-            await axios.delete(`${URL}/ai/history/${roomId}`);
+            await api.delete(`/ai/history/${roomId}`);
             setHistory([]);
             toast.success("Chat cleared");
         } catch {

@@ -1,13 +1,19 @@
 import { Request, Response } from "express";
 import { prisma } from "../db/prisma";
-import { getOrCreateRoom } from "../services/room.service";
+import { makeRoom, getRoomById } from "../services/room.service";
+import { AuthRequest } from "../middleware/auth.middleware";
+import { RoomParticipants } from "../store/roomParticipants";
 
 //  GET ROOM DATA
 export const getRoomData = async (req: Request, res: Response) => {
     const { roomId } = req.params;
 
     try {
-        const room = await getOrCreateRoom(roomId as string);
+        const room = await getRoomById(roomId as string);
+
+        if (!room) {
+            return res.status(404).json({ error: "Room not found" });
+        }
 
         res.json({
             roomId: room.id,
@@ -19,14 +25,54 @@ export const getRoomData = async (req: Request, res: Response) => {
     }
 };
 
+// CREATE ROOM
+export const createRoom = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ error: "Authentication Required" })
+
+        const room = await makeRoom(userId);
+
+        res.json({ roomId: room.id });
+    } catch {
+        res.status(500).json({ error: "Failed to create room" });
+    }
+};
+
+
 // SAVE ROOM CODE
-export const saveRoomCode = async (req: Request, res: Response) => {
-    const { roomId } = req.params;
+export const saveRoomCode = async (req: AuthRequest, res: Response) => {
+    const roomId = req.params.roomId;
     const { code, language } = req.body;
 
+    if (!roomId || typeof roomId !== "string") {
+        return res.status(400).json({ error : "Invalid RoomId"});
+    }
+
     try {
+        const room = await prisma.room.findUnique({
+            where: { id: roomId },
+        });
+
+        if (!room) {
+            return res.status(404).json({ error: "Room not found"});
+        }
+
+        const userId = req.user?.userId;
+
+        if (!userId) {
+            return res.status(401).json({ error: "Unauthorized"});
+        }
+
+        const isOwner = room.userId === userId;
+        const isParticipant = RoomParticipants.get(roomId)?.has(userId);
+
+        if (!isOwner && !isParticipant) {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
         await prisma.room.update({
-            where: { id: roomId as string },
+            where: { id: roomId },
             data: {
                 code,
                 language,

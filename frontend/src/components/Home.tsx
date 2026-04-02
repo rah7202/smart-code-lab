@@ -1,49 +1,83 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { socket } from "../socket";
+import api from "../lib/authAxios";
 import toast from "react-hot-toast";
-import { v4 as uuid } from "uuid";
+import { socket } from "../socket";
+import { getUserFromToken } from "../utils/auth";
+
 import Footer from "./Footer";
 
 export default function Home() {
     const navigate = useNavigate();
     const [roomId, setRoomId] = useState("");
-    const [username, setUsername] = useState("");
 
-    const generateRoomId = () => {
-        const id = uuid();
-        setRoomId(id);
-        toast.success("Room ID generated successfully");
+    const user = getUserFromToken();
+    const name = user?.username?.charAt(0).toUpperCase() + user?.username?.slice(1);
+
+
+    const createRoom = async () => {
+        try {
+            const res = await api.post(`/room/create`);
+            const data = res.data;
+
+            setRoomId(data.roomId);
+            toast.success("Room created successfully");
+        } catch (error: any) {
+            const message = error.response?.data?.error || "Failed to create room";
+            toast.error(message);
+        }
     };
 
     const joinRoom = () => {
-        if (!roomId || !username) {
-            toast.error("Please enter room ID and username");
+        if (!roomId) {
+            toast.error("Please enter a room ID");
             return;
         }
 
-        localStorage.setItem("username", username);
+        const token = localStorage.getItem("token");
 
-        socket.io.opts.query = { RoomId: roomId, username };
-        socket.connect();
+        if (!token) {
+            toast.error("Please login first");
+            navigate("/login");
+            return;
+        }
 
-        navigate(`/editor/${roomId}`, { state: { username } });
+        navigate(`/editor/${roomId}`);
         toast.success("Joined room successfully");
     };
 
+    const handleLogout = () => {
+
+        try {
+            localStorage.removeItem("token");
+            socket.disconnect();
+            navigate("/login");
+            toast.success("Logged Out successfully");
+
+        } catch {
+            toast.error("Logged Out Failed");
+        }
+    };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
             <div className="flex flex-col items-center">
                 <h1 className="text-4xl font-bold mb-4">Smart Code Lab</h1>
-                <div className="bg-gray-800 p-6 rounded-lg shadow-md-w-[400px]">
+                {user && (
+                    <h2 className="text-2xl mb-4 text-gray-300">
+                        Welcome <span className="text-green-400">{name}</span>, happy to see you again 
+                    </h2>
+                )}
+            
+                <div className="bg-gray-800 p-6 rounded-lg shadow-md w-125">
                     <input className="w-full p-2 mb-3 rounded bg-gray-700" placeholder="Room ID" value={roomId} onChange={(e) => { setRoomId(e.target.value) }} />
-                    <input className="w-full p-2 mb-3 rounded bg-gray-700" placeholder="Username" value={username} onChange={(e) => { setUsername(e.target.value) }} />
-
                     <button onClick={joinRoom} className="w-full bg-green-500 py-2 rounded mb-2 hover:bg-green-600 cursor-pointer">
-                        JOIN
+                        Join Room
                     </button>
-                    <p className="text-sm text-center">Don't have a room Id ? <span onClick={generateRoomId} className="text-blue-400 cursor-pointer">Create a new room</span></p>
+                    <button onClick={handleLogout} className="w-full bg-blue-500 py-2 rounded mb-2 hover:bg-blue-600 cursor-pointer">
+                        Logout
+                    </button>
+                    <p className="text-sm text-center">Don't have a room Id ? <span onClick={createRoom} className="text-blue-400 cursor-pointer">Create a new room</span></p>
                 </div>
             </div>
             <div className="absolute bottom-0 left-1/2 right-1/2 mb-1">
@@ -52,4 +86,4 @@ export default function Home() {
 
         </div>
     );
-}
+};

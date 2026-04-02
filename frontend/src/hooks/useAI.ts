@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import toast from "react-hot-toast";
+import api from "../lib/authAxios";
 
-const URL = import.meta.env.VITE_BACKEND_URL;
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW = 60_000;
 
@@ -45,10 +44,10 @@ export function useAI({ userCode, userLang, roomId }: UseAIProps) {
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                const res = await axios.get(`${URL}/ai/history/${roomId}`);
+                const res = await api.get(`/ai/history/${roomId}`);
                 setHistory(res.data);
             } catch (e) {
-                console.error("FETCH ERROR:", e); // This will show up in your Vitest terminal
+                toast.error("Fetching Error");
             }
         };
         if (roomId) fetchHistory();
@@ -123,7 +122,7 @@ export function useAI({ userCode, userLang, roomId }: UseAIProps) {
         setIsAiThinking(true);
 
         try {
-            const res = await axios.post(`${URL}/ai/generate`, { prompt, roomId });
+            const res = await api.post(`/ai/generate`, { prompt, roomId });
 
             setHistory(prev => [
                 ...prev,
