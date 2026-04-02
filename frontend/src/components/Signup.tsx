@@ -17,12 +17,11 @@ export default function Signup() {
         return;
       }
 
-      const res = await axios.post(`${URL}/api/auth/signup`, {
+      await axios.post(`${URL}/api/auth/signup`, {
         username,
         password,
       });
 
-      const data = res.data;
       toast.success("User created");
 
       navigate("/login");
