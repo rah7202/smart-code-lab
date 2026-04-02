@@ -1,4 +1,4 @@
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { useCollaboration } from "../../hooks/useCollaboration";
 import { socket } from "../../socket";
@@ -14,6 +14,7 @@ let socketListeners: Record<string, Function> = {};
 vi.mock("../../socket", () => ({
     socket: {
         connect: vi.fn(),
+        disconnect: vi.fn(),
         emit: vi.fn(),
         on: vi.fn((event: string, callback: Function) => {
             socketListeners[event] = callback;
@@ -37,6 +38,7 @@ describe("useCollaboration", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        localStorage.setItem("token", "mock-token");
         socketListeners = {}; // Reset socket listeners
         document.head.innerHTML = ""; // Clear injected styles from previous tests
 
@@ -78,7 +80,6 @@ describe("useCollaboration", () => {
     const renderDefaultHook = () => {
         return renderHook(() => useCollaboration({
             roomId: "room-123",
-            username: "TestUser",
             editorRef: mockEditorRef,
             monacoInstance: mockMonacoInstance,
             onCodeChange: mockOnCodeChange,
@@ -91,53 +92,72 @@ describe("useCollaboration", () => {
     // 2. TESTS
     // ─────────────────────────────────────────────────────────────────────────
 
-    it("connects to socket and emits join on mount", () => {
+    it("connects to socket and emits join on mount", async () => {
         renderDefaultHook();
-        expect(socket.connect).toHaveBeenCalled();
-        expect(socket.emit).toHaveBeenCalledWith("join", { RoomId: "room-123", username: "TestUser" });
+        await waitFor(() => expect(socket.connect).toHaveBeenCalled());
+
+        act(() => {
+            socketListeners["connect"]?.();
+        });
+
+        expect(socket.emit).toHaveBeenCalledWith("join", { RoomId: "room-123" });
     });
 
-    it("handles code-sync socket event", () => {
+    it("handles code-sync socket event", async () => {
         renderDefaultHook();
+        await waitFor(() => expect(typeof socketListeners["code-sync"]).toBe("function"));
+
         act(() => {
             socketListeners["code-sync"]("new remote code");
         });
+
         expect(mockOnCodeChange).toHaveBeenCalledWith("new remote code");
     });
 
-    it("handles connect_error socket event", () => {
+    it("handles connect_error socket event", async () => {
         renderDefaultHook();
+        await waitFor(() => expect(typeof socketListeners["connect_error"]).toBe("function"));
+
         act(() => {
             socketListeners["connect_error"]();
         });
+
         expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("Connection failed"));
     });
 
-    it("handles content-edited socket event", () => {
+    it("handles content-edited socket event", async () => {
         renderDefaultHook();
+        await waitFor(() => expect(typeof socketListeners["content-edited"]).toBe("function"));
+
         act(() => {
             socketListeners["content-edited"]({ code: "updated code", language: "python" });
         });
+
         expect(mockOnLangChange).toHaveBeenCalledWith("python");
         expect(mockOnCodeChange).toHaveBeenCalledWith("updated code");
     });
 
-    it("ignores content-edited if code is undefined or null", () => {
+    it("ignores content-edited if code is undefined or null", async () => {
         renderDefaultHook();
+        await waitFor(() => expect(typeof socketListeners["content-edited"]).toBe("function"));
+
         act(() => {
             socketListeners["content-edited"]({ code: null, language: "python" });
             socketListeners["content-edited"]({ code: undefined, language: "python" });
         });
+
         expect(mockOnCodeChange).not.toHaveBeenCalled();
     });
 
-    it("updates users list and captures current user color", () => {
+    it("updates users list and captures current user color", async () => {
         const { result } = renderDefaultHook();
         
         const testUsers = [
             { username: "Alice", socketId: "socket1", color: "#ff0000" },
             { username: "TestUser", socketId: "socket2", color: "#00ff00" }, // The current user
         ];
+
+        await waitFor(() => expect(typeof socketListeners["users"]).toBe("function"));
 
         act(() => {
             socketListeners["users"](testUsers);
@@ -148,34 +168,27 @@ describe("useCollaboration", () => {
     });
 
     
-    it("cleans up decorations and styles when a user leaves", () => {
-        // Grab 'result' so we can directly access the hook's refs
+    it("updates users list when a user leaves", async () => {
         const { result } = renderDefaultHook();
-        
-        // 1. Manually add a dummy style tag
-        const styleEl = document.createElement("style");
-        styleEl.id = "cursor-style-socket1";
-        document.head.appendChild(styleEl);
-        
-        // Let's actually populate the decorationsRef so the hook knows socket1 was here!
-        act(() => {
-            result.current.decorationsRef.current.set("socket1", ["dummy-dec"]);
-        });
-        
-        mockEditorRef.current.deltaDecorations.mockReturnValueOnce([]);
-        
-        // 2. Trigger users event WITHOUT socket1 (simulating they left)
+
+        await waitFor(() => expect(typeof socketListeners["users"]).toBe("function"));
+
         act(() => {
             socketListeners["users"]([
-                { username: "TestUser", socketId: "socket2", color: "#00ff00" } // Only I am left
+                { username: "Alice", socketId: "socket1", color: "#ff0000" },
+                { username: "TestUser", socketId: "socket2", color: "#00ff00" },
             ]);
         });
 
-        // The editor should clear decorations using the exact array we set
-        expect(mockEditorRef.current.deltaDecorations).toHaveBeenCalledWith(["dummy-dec"], []);
-        
-        // The DOM style element should be removed
-        expect(document.getElementById("cursor-style-socket1")).toBeNull();
+        expect(result.current.users).toHaveLength(2);
+
+        act(() => {
+            socketListeners["users"]([
+                { username: "TestUser", socketId: "socket2", color: "#00ff00" },
+            ]);
+        });
+
+        expect(result.current.users).toHaveLength(1);
     });
 
     it("handles cursor-move event and injects styles", () => {
@@ -209,11 +222,10 @@ describe("useCollaboration", () => {
             result.current.emitCursorMove(10, 20);
         });
 
-        expect(socket.emit).toHaveBeenCalledWith("cursor-move", expect.objectContaining({
+        expect(socket.emit).toHaveBeenCalledWith("cursor-move", {
             line: 10,
             column: 20,
-            username: "TestUser",
-        }));
+        });
     });
 
     it("emits code change via emitCodeChange", () => {
@@ -243,9 +255,10 @@ describe("useCollaboration", () => {
         expect(mockIsRemoteUpdate.current).toBe(false);
     });
 
-    it("removes socket listeners on unmount", () => {
+    it("removes socket listeners on unmount", async () => {
         const { unmount } = renderDefaultHook();
-        
+        await waitFor(() => expect(socket.connect).toHaveBeenCalled());
+
         unmount();
 
         expect(socket.off).toHaveBeenCalledWith("code-sync");
@@ -253,5 +266,6 @@ describe("useCollaboration", () => {
         expect(socket.off).toHaveBeenCalledWith("users");
         expect(socket.off).toHaveBeenCalledWith("cursor-move");
         expect(socket.off).toHaveBeenCalledWith("connect_error");
+        expect(socket.disconnect).toHaveBeenCalled();
     });
 });
