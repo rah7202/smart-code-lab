@@ -1,5 +1,3 @@
-
-// ✅ explicit factory mock — no __mocks__ folder needed
 jest.mock("../../db/prisma", () => ({
     prisma: {
         aIMessage: {
@@ -14,6 +12,12 @@ jest.mock("../../services/ai.service", () => ({
     generativeAIResponse: jest.fn(),
 }));
 
+jest.mock("../../middleware/auth.middleware", () => ({
+    authenticate: (req: any, _res: any, next: any) => {
+        req.user = { userId: "test-user-id", username: "testuser" };
+        next();
+    },
+}));
 
 import request from "supertest";
 import express from "express";
@@ -25,6 +29,7 @@ const mockAIResponse = generativeAIResponse as jest.Mock;
 const mockCreate    = prisma.aIMessage.create   as jest.Mock;
 const mockFindMany  = prisma.aIMessage.findMany  as jest.Mock;
 const mockDeleteMany = prisma.aIMessage.deleteMany as jest.Mock;
+
 
 const app = express();
 app.use(express.json());
