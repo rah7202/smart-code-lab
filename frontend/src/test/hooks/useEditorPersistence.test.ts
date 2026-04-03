@@ -19,6 +19,14 @@ vi.mock("react-hot-toast", () => {
     return { default: toastMock };
 });
 
+beforeEach(() => {
+  vi.clearAllMocks();
+
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+  }) as any;
+});
+
 vi.mock("../../socket", () => ({
     socket: { emit: vi.fn() }
 }));
