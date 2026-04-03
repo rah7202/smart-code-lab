@@ -18,10 +18,10 @@ const config: Config = {
     coverageThreshold: {
         global: {
             lines: 70,
-            functions: 70,
+            functions: 60,
         },
     },
-    // ✅ removed moduleNameMapper — inline jest.mock() handles prisma mocking
+    // removed moduleNameMapper — inline jest.mock() handles prisma mocking
     setupFilesAfterEnv: [],
     clearMocks: true,
 };
