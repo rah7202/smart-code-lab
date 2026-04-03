@@ -16,8 +16,6 @@ interface UseEditorPersistenceProps {
     onLoad?: (code: string, lang: string) => void; // EditorPage applies imperatively
 }
 
-const URL = import.meta.env.VITE_BACKEND_URL;
-
 export function useEditorPersistence({
     roomId,
     userLang,
@@ -35,6 +33,7 @@ export function useEditorPersistence({
 
     const user = getUserFromToken();
     const name = user?.username?.charAt(0).toUpperCase() + user?.username?.slice(1);
+    const URL = import.meta.env.VITE_BACKEND_URL;
 
     // ── Init debounced DB save ────────────────────────────────────────────────
     useEffect(() => {
@@ -91,11 +90,18 @@ export function useEditorPersistence({
     useEffect(() => {
         const handleBeforeLeave = () => {
             
-            navigator.sendBeacon(`${URL}/snapshot/${roomId}`,
-                new Blob([JSON.stringify({ code: userCode, language: userLang })], 
-                        { type: "application/json" })
-            );
-
+            fetch(`${URL}/api/snapshot/${roomId}`, {
+                method: "POST",
+                keepalive: true, 
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${localStorage.getItem("token")}`,
+                },
+                body: JSON.stringify({
+                    code: userCode,
+                    language: userLang,
+                }),
+            });
         };
         window.addEventListener("beforeunload", handleBeforeLeave);
         return () => window.removeEventListener("beforeunload", handleBeforeLeave);

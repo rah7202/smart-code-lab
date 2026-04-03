@@ -9,15 +9,26 @@ dotenv.config({
 
 import http from "http";
 import app from "./app";
-
 import { initSocket } from "./sockets/socket";
+import { connectRedis } from "./db/redis";
 
 const PORT = 8000;
 
-const server = http.createServer(app);
+async function startServer () {
+    try {
 
-initSocket(server);
+        await connectRedis();
+        const server = http.createServer(app);
+        initSocket(server);
 
-server.listen(PORT, () => {
-    logger.info(`Server started on port ${PORT}`);
-});
+        server.listen(PORT, () => {
+            logger.info(`Server started on port ${PORT}`);
+        });
+    } catch (error) {
+
+        logger.error("Failed to start server", { error });
+        process.exit(1);
+    }
+}
+
+startServer();

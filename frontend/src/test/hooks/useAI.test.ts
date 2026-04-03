@@ -1,15 +1,43 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 
-// ── Mocks — must be before imports ────────────────────────────────────────
-
 vi.mock("react-hot-toast", () => ({
     default: { error: vi.fn(), success: vi.fn() },
 }));
 
-import axios from "axios";
+vi.mock("../lib/authAxios", () => ({
+    default: {
+        get: vi.fn(),
+        post: vi.fn(),
+    },
+}));
+
+import api from "../../lib/authAxios";
 import toast from "react-hot-toast";
 import { useAI } from "../../hooks/useAI";
+
+// ── Helper: create a mock SSE stream ──────────────────────────────────────
+function mockStream(chunks: string[], error = false) {
+    const encoder = new TextEncoder();
+    const parts = chunks.map(c => `data: {"chunk":"${c}"}\n\n`);
+    parts.push(`data: {"done":true}\n\n`);
+
+    return {
+        ok: !error,
+        body: new ReadableStream({
+            start(controller) {
+                if (error) {
+                    controller.error(new Error("stream failed"));
+                    return;
+                }
+                for (const part of parts) {
+                    controller.enqueue(encoder.encode(part));
+                }
+                controller.close();
+            },
+        }),
+    };
+}
 
 const defaultProps = {
     userCode: 'console.log("hello")',
@@ -27,8 +55,8 @@ describe("useAI — initial state", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(axios.get).mockResolvedValue({ data: [] });
-        vi.mocked(axios.post).mockResolvedValue({ data: { data: "AI response" } });
+        vi.mocked(api.get).mockResolvedValue({ data: [] });
+        global.fetch = vi.fn().mockResolvedValue(mockStream(["Hello"]));
     });
 
     it("starts with isAiThinking = false", () => {
@@ -56,9 +84,9 @@ describe("useAI — initial state", () => {
         expect(result.current.history).toEqual([]);
     });
 
-    it("fetches AI history on mount", async () => {
+    it("fetches AI history on mount using api.get", async () => {
         const messages = [{ role: "user", content: "hello" }];
-        vi.mocked(axios.get).mockResolvedValue({ data: messages });
+        vi.mocked(api.get).mockResolvedValue({ data: messages });
 
         const { result } = renderAI();
 
@@ -66,7 +94,7 @@ describe("useAI — initial state", () => {
             expect(result.current.history).toEqual(messages);
         });
 
-        expect(axios.get).toHaveBeenCalledWith(
+        expect(api.get).toHaveBeenCalledWith(
             expect.stringContaining("/ai/history/room-test-123")
         );
     });
@@ -92,28 +120,25 @@ describe("useAI — analyzeCode", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(axios.get).mockResolvedValue({ data: [] });
-        vi.mocked(axios.post).mockResolvedValue({ data: { data: "Here is my analysis." } });
+        vi.mocked(api.get).mockResolvedValue({ data: [] });
+        global.fetch = vi.fn().mockResolvedValue(mockStream(["Here is my analysis."]));
     });
 
-    it("sets mode to 'code' and adds to history", async () => {
+    it("sets mode to 'code'", async () => {
+        const { result } = renderAI();
+        await act(async () => { result.current.analyzeCode(); });
+        await waitFor(() => expect(result.current.mode).toBe("code"));
+    });
+
+    it("sends fetch POST to /ai/stream", async () => {
         const { result } = renderAI();
         await act(async () => { result.current.analyzeCode(); });
 
-        await waitFor(() => {
-            expect(result.current.mode).toBe("code");
-            expect(result.current.history.some(m => m.role === "ai")).toBe(true);
-        });
-    });
+        await waitFor(() => expect(fetch).toHaveBeenCalled());
 
-    it("sends POST to /ai/generate with roomId", async () => {
-        const { result } = renderAI();
-        await act(async () => { result.current.analyzeCode(); });
-
-        await waitFor(() => expect(axios.post).toHaveBeenCalled());
-
-        const [url, body] = (axios.post as any).mock.calls[0];
-        expect(url).toContain("/ai/generate");
+        const [url, options] = (fetch as any).mock.calls[0];
+        const body = JSON.parse(options.body);
+        expect(url).toContain("/ai/stream");
         expect(body.roomId).toBe("room-test-123");
     });
 
@@ -121,9 +146,10 @@ describe("useAI — analyzeCode", () => {
         const { result } = renderAI();
         await act(async () => { result.current.analyzeCode(); });
 
-        await waitFor(() => expect(axios.post).toHaveBeenCalled());
+        await waitFor(() => expect(fetch).toHaveBeenCalled());
 
-        const body = (axios.post as any).mock.calls[0][1];
+        const [, options] = (fetch as any).mock.calls[0];
+        const body = JSON.parse(options.body);
         expect(body.prompt).toContain('console.log("hello")');
     });
 
@@ -131,31 +157,53 @@ describe("useAI — analyzeCode", () => {
         const { result } = renderAI();
         await act(async () => { result.current.analyzeCode(); });
 
-        await waitFor(() => expect(axios.post).toHaveBeenCalled());
+        await waitFor(() => expect(fetch).toHaveBeenCalled());
 
-        const body = (axios.post as any).mock.calls[0][1];
+        const [, options] = (fetch as any).mock.calls[0];
+        const body = JSON.parse(options.body);
         expect(body.prompt).toContain("javascript");
     });
 
     it("sets isAiThinking to false after response", async () => {
         const { result } = renderAI();
         await act(async () => { result.current.analyzeCode(); });
-
-        await waitFor(() => {
-            expect(result.current.isAiThinking).toBe(false);
-        });
+        await waitFor(() => expect(result.current.isAiThinking).toBe(false));
     });
 
-    it("adds error message to history when API fails", async () => {
-        vi.mocked(axios.post).mockRejectedValue(new Error("Server down"));
-
+    it("adds exactly ONE user + ONE ai message to history", async () => {
         const { result } = renderAI();
         await act(async () => { result.current.analyzeCode(); });
 
         await waitFor(() => {
-            const lastMsg = result.current.history[result.current.history.length - 1];
-            expect(lastMsg.role).toBe("ai");
-            expect(lastMsg.content).toContain("AI Error");
+            const userMsgs = result.current.history.filter(m => m.role === "user");
+            const aiMsgs = result.current.history.filter(m => m.role === "ai");
+            expect(userMsgs).toHaveLength(1);  // ← no duplicates
+            expect(aiMsgs).toHaveLength(1);    // ← no duplicates
+        });
+    });
+
+    it("streams content into the AI message", async () => {
+        global.fetch = vi.fn().mockResolvedValue(mockStream(["Hello", " world"]));
+        const { result } = renderAI();
+        await act(async () => { result.current.analyzeCode(); });
+
+        await waitFor(() => {
+            const aiMsg = result.current.history.find(m => m.role === "ai");
+            expect(aiMsg?.content).toContain("Hello");
+        });
+    });
+
+    it("adds error message when stream fails", async () => {
+        global.fetch = vi.fn().mockResolvedValue({ ok: false, body: null });
+        const { result } = renderAI();
+        await act(async () => { result.current.analyzeCode(); });
+
+        await waitFor(() => {
+            const aiMsg = result.current.history.filter(m => m.role === "ai");
+            expect(aiMsg.length).toBeGreaterThan(0);
+
+            const lastAI = aiMsg[aiMsg.length -1];
+            expect(lastAI?.content).toContain("AI Error");
         });
     });
 });
@@ -164,45 +212,38 @@ describe("useAI — askQuestion", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(axios.get).mockResolvedValue({ data: [] });
-        vi.mocked(axios.post).mockResolvedValue({ data: { data: "Answer to your question." } });
+        vi.mocked(api.get).mockResolvedValue({ data: [] });
+        global.fetch = vi.fn().mockResolvedValue(mockStream(["Answer."]));
     });
 
     it("sets mode to 'question'", async () => {
         const { result } = renderAI();
         await act(async () => { result.current.askQuestion("What is a pointer?"); });
-
-        await waitFor(() => {
-            expect(result.current.mode).toBe("question");
-        });
+        await waitFor(() => expect(result.current.mode).toBe("question"));
     });
 
     it("does nothing when question is empty or whitespace", async () => {
         const { result } = renderAI();
         await act(async () => { result.current.askQuestion("   "); });
-        expect(axios.post).not.toHaveBeenCalled();
+        expect(fetch).not.toHaveBeenCalled();
     });
 
     it("clears aiQuestion after sending", async () => {
         const { result } = renderAI();
-
         act(() => { result.current.setAiQuestion("What is an array?"); });
         await act(async () => { result.current.askQuestion("What is an array?"); });
-
-        await waitFor(() => {
-            expect(result.current.aiQuestion).toBe("");
-        });
+        await waitFor(() => expect(result.current.aiQuestion).toBe(""));
     });
 
-    it("adds user + ai messages to history", async () => {
+    it("adds exactly one user + one ai message", async () => {
         const { result } = renderAI();
         await act(async () => { result.current.askQuestion("What is recursion?"); });
 
         await waitFor(() => {
-            const hasUser = result.current.history.some(m => m.role === "user");
-            const hasAI = result.current.history.some(m => m.role === "ai");
-            expect(hasUser).toBe(true);
-            expect(hasAI).toBe(true);
+            const userMsgs = result.current.history.filter(m => m.role === "user");
+            const aiMsgs = result.current.history.filter(m => m.role === "ai");
+            expect(userMsgs).toHaveLength(1);
+            expect(aiMsgs).toHaveLength(1);
         });
     });
 
@@ -210,9 +251,10 @@ describe("useAI — askQuestion", () => {
         const { result } = renderAI();
         await act(async () => { result.current.askQuestion("What is a loop?"); });
 
-        await waitFor(() => expect(axios.post).toHaveBeenCalled());
+        await waitFor(() => expect(fetch).toHaveBeenCalled());
 
-        const body = (axios.post as any).mock.calls[0][1];
+        const [, options] = (fetch as any).mock.calls[0];
+        const body = JSON.parse(options.body);
         expect(body.prompt).not.toContain('console.log("hello")');
     });
 });
@@ -221,8 +263,8 @@ describe("useAI — askAboutSelection", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(axios.get).mockResolvedValue({ data: [] });
-        vi.mocked(axios.post).mockResolvedValue({ data: { data: "Selection analysis." } });
+        vi.mocked(api.get).mockResolvedValue({ data: [] });
+        global.fetch = vi.fn().mockResolvedValue(mockStream(["Selection analysis."]));
     });
 
     it("sets mode to 'selection'", async () => {
@@ -230,10 +272,7 @@ describe("useAI — askAboutSelection", () => {
         await act(async () => {
             result.current.askAboutSelection("Explain this", "const x = 1;");
         });
-
-        await waitFor(() => {
-            expect(result.current.mode).toBe("selection");
-        });
+        await waitFor(() => expect(result.current.mode).toBe("selection"));
     });
 
     it("includes selected code in the prompt", async () => {
@@ -242,9 +281,10 @@ describe("useAI — askAboutSelection", () => {
             result.current.askAboutSelection("Explain this", "const x = 1;");
         });
 
-        await waitFor(() => expect(axios.post).toHaveBeenCalled());
+        await waitFor(() => expect(fetch).toHaveBeenCalled());
 
-        const body = (axios.post as any).mock.calls[0][1];
+        const [, options] = (fetch as any).mock.calls[0];
+        const body = JSON.parse(options.body);
         expect(body.prompt).toContain("const x = 1;");
     });
 
@@ -254,9 +294,10 @@ describe("useAI — askAboutSelection", () => {
             result.current.askAboutSelection("Fix the bug", "let x = ;");
         });
 
-        await waitFor(() => expect(axios.post).toHaveBeenCalled());
+        await waitFor(() => expect(fetch).toHaveBeenCalled());
 
-        const body = (axios.post as any).mock.calls[0][1];
+        const [, options] = (fetch as any).mock.calls[0];
+        const body = JSON.parse(options.body);
         expect(body.prompt).toContain("Fix the bug");
     });
 
@@ -266,9 +307,10 @@ describe("useAI — askAboutSelection", () => {
             result.current.askAboutSelection("Optimise", "for(let i=0;i<n;i++){}");
         });
 
-        await waitFor(() => expect(axios.post).toHaveBeenCalled());
+        await waitFor(() => expect(fetch).toHaveBeenCalled());
 
-        const body = (axios.post as any).mock.calls[0][1];
+        const [, options] = (fetch as any).mock.calls[0];
+        const body = JSON.parse(options.body);
         expect(body.prompt).toContain("javascript");
     });
 });
@@ -277,8 +319,8 @@ describe("useAI — rate limiting", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(axios.get).mockResolvedValue({ data: [] });
-        vi.mocked(axios.post).mockResolvedValue({ data: { data: "ok" } });
+        vi.mocked(api.get).mockResolvedValue({ data: [] });
+        global.fetch = vi.fn().mockResolvedValue(mockStream(["ok"]));
     });
 
     it("aiRequestsLeft starts at 5", () => {
@@ -310,17 +352,17 @@ describe("useAI — rate limiting", () => {
         );
     });
 
-    it("does not call API when rate limited", async () => {
+    it("does not call fetch when rate limited", async () => {
         const { result } = renderAI();
 
         for (let i = 0; i < 5; i++) {
             await act(async () => { result.current.askQuestion(`q${i}`); });
         }
 
-        const callsBefore = (axios.post as any).mock.calls.length;
+        const callsBefore = (fetch as any).mock.calls.length;
         await act(async () => { result.current.askQuestion("blocked"); });
 
-        expect((axios.post as any).mock.calls.length).toBe(callsBefore);
+        expect((fetch as any).mock.calls.length).toBe(callsBefore);
     });
 });
 
@@ -328,8 +370,8 @@ describe("useAI — setHistory", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(axios.get).mockResolvedValue({ data: [] });
-        vi.mocked(axios.post).mockResolvedValue({ data: { data: "response" } });
+        vi.mocked(api.get).mockResolvedValue({ data: [] });
+        global.fetch = vi.fn().mockResolvedValue(mockStream(["response"]));
     });
 
     it("allows manually setting history", () => {

@@ -120,23 +120,99 @@ export function useAI({ userCode, userLang, roomId }: UseAIProps) {
         }
         aiTimestamps.current.push(Date.now());
         setIsAiThinking(true);
+        
+        const URL = import.meta.env.VITE_BACKEND_URL;
+        const token = localStorage.getItem("token");
 
         try {
-            const res = await api.post(`/ai/generate`, { prompt, roomId });
+            const res = await fetch(`${URL}/api/ai/stream`, {
+                method: "POST",
+                headers: {
+                    "Content-Type":"application/json",
+                    "Authorization":`Bearer ${token}`,
+                },
+                body: JSON.stringify({ prompt, roomId }),
+            });
+            if (!res.ok) throw new Error("stream failed");
+
+            const reader = res.body!.getReader();
+            const decoder = new TextDecoder();
+            
+            let buffer = "";
+            let aiText = "";
 
             setHistory(prev => [
                 ...prev,
                 { role: "user", content: prompt },
-                { role: "ai", content: res.data.data },
-            ])
+                { role: "ai", content: "" },
+            ]);
 
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                const parts = buffer.split("\n\n");
+                buffer = parts.pop() || "";
+
+                for (const part of parts) {
+                    if (!part.startsWith("data: ")) continue;
+
+                    try {
+                        const data = JSON.parse(part.slice(6));
+
+                        if (data.done) {
+                            return;
+                        }
+
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+
+                        if (data.chunk) {
+                            aiText += data.chunk;
+
+                            setHistory(prev => {
+                            const updated = [...prev];
+                            updated[updated.length - 1] = {
+                                role: "ai",
+                                content: aiText,
+                            };
+                            return updated;
+                            });
+                        }
+
+                    } catch (err) {
+                        console.error("SSE parse error", err);
+                    }
+                }
+            }
         } catch {
-            setHistory(prev => [
-                ...prev,
-                { role: "ai", content: "AI Error — check your server connection." },
-            ])
+
+            setHistory(prev => {
+                const updated = [...prev];
+
+                // ✅ if last message is AI → update it
+                if (updated.length > 0 && updated[updated.length - 1].role === "ai") {
+                updated[updated.length - 1] = {
+                    role: "ai",
+                    content: "AI Error — check your server connection.",
+                };
+                } else {
+                // ✅ if AI placeholder was never added → add one
+                updated.push({
+                    role: "ai",
+                    content: "AI Error — check your server connection.",
+                });
+                }
+
+                return updated;
+            });
+
+        } finally {
+            setIsAiThinking(false);
         }
-        setIsAiThinking(false);
     };
 
     // ASK GEMINI BUTTON — always analyzes the full current code in editor

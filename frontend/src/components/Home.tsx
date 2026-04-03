@@ -4,6 +4,7 @@ import api from "../lib/authAxios";
 import toast from "react-hot-toast";
 import { socket } from "../socket";
 import { getUserFromToken } from "../utils/auth";
+import { AxiosError } from "axios";
 
 import Footer from "./Footer";
 
@@ -22,8 +23,8 @@ export default function Home() {
 
             setRoomId(data.roomId);
             toast.success("Room created successfully");
-        } catch (error: any) {
-            const message = error.response?.data?.error || "Failed to create room";
+        } catch (error) {
+            const message = error instanceof AxiosError ? error.response?.data?.error || "Request failed" : "An unexpected error occurred" ;
             toast.error(message);
         }
     };

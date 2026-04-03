@@ -6,6 +6,9 @@ import http from "http";
 import jwt from "jsonwebtoken";
 import { RoomParticipants } from "../store/roomParticipants";
 
+import { redis, redisSub } from "../db/redis";
+import  { createAdapter } from "@socket.io/redis-adapter";
+
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) throw new Error("JWT_SECRET env var is required");
 
@@ -13,15 +16,19 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "http://localhost:5173")
     .split(",")
     .map((o) => o.trim());
 
-const RoomToUsers = new Map<string, Map<string, User>>(); 
-const RoomToContent = new Map<string, RoomPayload>();
-const SocketToRoom = new Map<string, string>();
 const SocketToColor = new Map<string, string>();
 
 const USER_COLORS = [
     "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4",
     "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F"
 ];
+
+interface ParsedUser { 
+    userId: string; 
+    socketId: string; 
+    username: string; 
+    color: string; 
+}
 
 export const initSocket = (server: http.Server) => {
     const io = new Server(server, {
@@ -31,6 +38,8 @@ export const initSocket = (server: http.Server) => {
             credentials: true,
         },
     });
+
+    io.adapter(createAdapter(redis, redisSub));
 
     io.use((socket, next) => {
         try {
@@ -58,9 +67,11 @@ export const initSocket = (server: http.Server) => {
         socket.on("join", async ({ RoomId }: { RoomId: string }) => {
         
             if (!RoomId) return;
-            if (SocketToRoom.has(socket.id)) return;
+            const existingRoom = await redis.get(`socket:${socket.id}:room`);
+            if (existingRoom) return;
+            //if (SocketToRoom.has(socket.id)) return;
 
-            const user = socket.data.user; // ✅ from JWT
+            const user = socket.data.user; // from JWT
             if (!user) return;
             const userId = user.userId;
             const username = user.username;
@@ -80,7 +91,7 @@ export const initSocket = (server: http.Server) => {
             }
 
             socket.join(RoomId);
-            SocketToRoom.set(socket.id, RoomId);
+            await redis.set(`socket:${socket.id}:room`, RoomId);
 
             // ROOM PARTICIPANTS
             if (!RoomParticipants.has(RoomId)) {
@@ -88,43 +99,80 @@ export const initSocket = (server: http.Server) => {
             }
             RoomParticipants.get(RoomId)!.add(userId);
 
-            let room = RoomToUsers.get(RoomId);
+            const usersKey = `room:${RoomId}:users`;
 
-            if (!room) {
-                room = new Map();
-                RoomToUsers.set(RoomId, room);
-            }
+            // get existing users
+            const existingUsers = await redis.hGetAll(usersKey);
+            const userCount = Object.keys(existingUsers).length;
 
-            const color = USER_COLORS[room.size % USER_COLORS.length] ?? "#4ECDCA";
-
-            room.set(socket.id, { username, socketId: socket.id, color });
+            // assign color
+            const color = USER_COLORS[userCount % USER_COLORS.length] ?? "#4ECDCA";
             SocketToColor.set(socket.id, color);
 
-            const userArray = Array.from(room.values());
-            io.to(RoomId).emit("users", userArray);
+            // store user
+            await redis.hSet(
+                usersKey,
+                socket.id,
+                JSON.stringify({ username, socketId: socket.id, userId, color })
+            );
 
-            const content = RoomToContent.get(RoomId);
-            if (content?.code) {
-                socket.emit("code-sync", content.code);
+            // fetch updated users
+            const updatedUsers = await redis.hGetAll(usersKey);
+
+            const userArray = Object.values(updatedUsers)
+                .map((u) => {
+                    try { return JSON.parse(u); } catch { return null; }
+                })
+                .filter(Boolean);
+
+            const uniqueUsersMap = new Map();
+
+            for (const user of userArray) {
+                if (!uniqueUsersMap.has(user.userId)) {
+                    uniqueUsersMap.set(user.userId, user);
+                }
+            }
+
+            const uniqueUsers = Array.from(uniqueUsersMap.values());
+
+            // emit
+            io.to(RoomId).emit("users", uniqueUsers);
+          
+            const contentStr = await redis.get(`room:${RoomId}:content`);
+
+            if (contentStr) {
+                try {
+                    const content = JSON.parse(contentStr);
+                    if (content?.code) {
+                        socket.emit("code-sync", content.code);
+                    }
+                } catch {
+                    //ignore parse error
+                }
             }
 
             logger.info("[SOCKET] User joined room", { socketId: socket.id, RoomId, username });
         });
 
         // CODE EDITOR
-        socket.on("content-edited", ({ code, language }: RoomPayload) => {
-            const roomId = SocketToRoom.get(socket.id);
+        socket.on("content-edited", async ({ code, language }: RoomPayload) => {
+            //const roomId = SocketToRoom.get(socket.id);
+            const roomId = await redis.get(`socket:${socket.id}:room`);
             if (!roomId) return;
-
-            RoomToContent.set(roomId, { code, language });
+   
+            await redis.set(
+                `room:${roomId}:content`,
+                JSON.stringify({ code, language})
+            );
 
             // Broadcast code changes to others in the room
             socket.to(roomId).emit("content-edited", { code, language });
         });
         
         // CURSOR MOVEMENT
-        socket.on("cursor-move", ({ line, column}: { line: number, column: number}) => {
-            const roomId = SocketToRoom.get(socket.id);
+        socket.on("cursor-move", async ({ line, column}: { line: number, column: number}) => {
+        
+            const roomId = await redis.get(`socket:${socket.id}:room`);
             if (!roomId) return;
 
             const user = socket.data.user;
@@ -141,21 +189,40 @@ export const initSocket = (server: http.Server) => {
         });
 
         // DISCONNECT
-        socket.on("disconnect", () => {
-            const roomId = SocketToRoom.get(socket.id);
+        socket.on("disconnect", async () => {
+            
+            const roomId = await redis.get(`socket:${socket.id}:room`);
 
             if (roomId) {
                 if (!socket.data.user) return;
                 const user = socket.data.user;
                 const userId = user?.userId;
-                const room = RoomToUsers.get(roomId);
+                //const room = RoomToUsers.get(roomId);
+                const usersKey = `room:${roomId}:users`;
 
                 // REMOVE FROM PARTICIPANTS
                 if (userId) {
                     
-                    const stillConnected = Array.from(room?.values() || [])
-                            .some( u => u.username === user.username && u.socketId !== socket.id);
+                    // remove user
+                    await redis.hDel(usersKey, socket.id);
                     
+                    // get remaining users
+                    const remainingUsers = await redis.hGetAll(usersKey);
+
+                    const parsedUsers : ParsedUser[] = Object.values(remainingUsers)
+                        .map((u) => {
+                            try { return JSON.parse(u); } catch { return null; }
+                        })
+                        .filter(Boolean);
+
+                    // check still connected
+                    const stillConnected = parsedUsers
+                        .some(
+                            (u: any) =>
+                            u.userId === userId && u.socketId !== socket.id
+                        );
+
+                    // updated participants
                     if (!stillConnected) {
                         RoomParticipants.get(roomId)?.delete(userId);
 
@@ -163,26 +230,31 @@ export const initSocket = (server: http.Server) => {
                             RoomParticipants.delete(roomId);
                         }
                     }
-                }
 
-                if (room) {
-                    room.delete(socket.id);
+                    const uniqueUsersMap = new Map();
 
-                    const userArray = Array.from(room.values());
-                    io.to(roomId).emit("users", userArray);
+                    for (const u of parsedUsers) {
+                        if (!uniqueUsersMap.has(u.userId)) {
+                            uniqueUsersMap.set(u.userId, u);
+                        }
+                    }
 
-                    if (room.size === 0) {
-                        RoomToUsers.delete(roomId);
+                    const uniqueUsers = Array.from(uniqueUsersMap.values());
+                    
+                    // emit users
+                    io.to(roomId).emit("users", uniqueUsers);
+
+                    if (parsedUsers.length === 0) {
+                        await redis.del(usersKey);
                     }
                 }
 
-                SocketToRoom.delete(socket.id);
+                await redis.del(`socket:${socket.id}:room`);
                 SocketToColor.delete(socket.id);
 
                 logger.info("[SOCKET] User disconnected", { socketId: socket.id, roomId });
             }
         });
-
     });
 
     return io;

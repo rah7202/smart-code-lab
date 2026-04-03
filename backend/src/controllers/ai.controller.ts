@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
 import { AIRequest } from "../types";
-import { generativeAIResponse } from "../services/ai.service";
+import { generativeAIResponse, streamAIResponse } from "../services/ai.service";
 import { prisma } from "../db/prisma";
+import { logger } from "../utils/logger";
+
 
 export const generateResponse = async (req: Request<{}, {}, AIRequest>, res: Response) => {
     const { prompt, roomId } = req.body;
@@ -39,6 +41,43 @@ export const generateResponse = async (req: Request<{}, {}, AIRequest>, res: Res
             success: false,
             error: "Failed to generate response" ,
         });
+    }
+};
+
+export const streamAiResponse = async (req: Request<{}, {}, AIRequest>, res: Response) => {
+    const { prompt, roomId } = req.body;
+    if (!prompt) return res.status(400).json({ error: "Prompt required" });
+
+    // SSE headers
+    res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+    });
+
+    const interval = setInterval(() => {
+        res.write(":\n\n");
+    }, 15000);
+
+    req.on("close", () => { clearInterval(interval)});
+
+    await prisma.aIMessage.create({ data: { roomId, role: "user", content: prompt } });
+    
+    let fullResponse = "";
+    try {
+        for await (const chunk of streamAIResponse(prompt)) {
+            fullResponse +=chunk;
+            res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+        }
+
+        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+        res.end();
+
+        await prisma.aIMessage.create({ data: { roomId, role: "ai", content: fullResponse } });
+    } catch {
+        res.write(`data: ${JSON.stringify({ error: "AI generation failed" })}\n\n`);
+        res.end();
     }
 };
 
