@@ -51,6 +51,8 @@ vi.mock("lodash.debounce", () => ({
     })
 }));
 
+global.fetch = vi.fn().mockResolvedValue({ ok: true }) as any;
+
 describe("useEditorPersistence", () => {
     let mockSetUserLang: any;
     let mockEditorRef: any;
@@ -179,9 +181,15 @@ describe("useEditorPersistence", () => {
             window.dispatchEvent(new Event("beforeunload"));
         });
 
-        expect(navigator.sendBeacon).toHaveBeenCalledWith(
-            expect.stringContaining("/snapshot/room-123"),
-            expect.any(Blob)
+        expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/snapshot/room-123"),
+        expect.objectContaining({
+                method: "POST",
+                keepalive: true,
+                headers: expect.objectContaining({
+                "Content-Type": "application/json",
+                }),
+            })
         );
     });
 
