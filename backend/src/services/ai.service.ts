@@ -17,3 +17,16 @@ export const generativeAIResponse = async (prompt: string): Promise<string> => {
     logger.info(`[AI] Response generated (response length: ${text.length})`);
     return text;
 };
+
+export async function* streamAIResponse(prompt: string): AsyncGenerator<string> {
+    if (!prompt?.trim()) throw new Error("Prompt cannot be empty");
+    logger.info(`[AI] Streaming (prompt length: ${prompt.length})`);
+    const result = await model.generateContentStream(prompt);
+    
+    for await (const chunk of result.stream) {
+        const text = chunk.text();
+        if (text) yield text;
+        
+    }
+
+}
