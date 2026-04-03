@@ -196,7 +196,6 @@ export default function EditorPage() {
 
         // Persist to DB
         try {
-            console.log("language change end poin hit in editor Page.tsx");
             await api.post(`/room/${roomId}/save`, {
                 code: newCode,
                 language: newLang,
