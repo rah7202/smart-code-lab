@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import axios from "axios";
+import { AxiosError } from "axios";
 
 export default function Signup() {
   const [username, setUsername] = useState("");
@@ -25,9 +26,9 @@ export default function Signup() {
       toast.success("User created");
 
       navigate("/login");
-    } catch (error: any) {
+    } catch (error) {
         // axios throws on 4xx/5xx so the status check is redundant
-        const message = error.response?.data?.error || "Signup failed";
+        const message = error instanceof AxiosError ? error.response?.data?.error || "Signup failed" : "An unexpected error occurred";
         toast.error(message);
     }
   };
