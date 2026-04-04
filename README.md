@@ -4,9 +4,9 @@
 
 - **Real-Time Collaboration:** A real-time collaborative code editor with AI-powered assistance. Multiple users can simultaneously write, edit, and debug code in the same room — with live cursor tracking, instant code synchronization, and an AI assistant powered by Google Gemini that streams responses in real-time.
 
-- **Scalability:** Designed a stateless backend architecture by replacing in-memory state with Redis, enabling horizontal scaling across multiple server instances.
+- **Scalability:** Designed a stateless backend architecture by replacing in-memory state with Redis, enabling **horizontal scaling across multiple server** instances.
 
-- **AI Integration:** Implemented an AI assistant with streaming responses (SSE), delivering real-time incremental outputs similar to ChatGPT.
+- **AI Integration:** Implemented an **AI assistant with streaming responses (SSE)**, delivering real-time incremental outputs similar to ChatGPT.
 
 - **Distributed Architecture:** Developed a Redis-based data model **(room:{id}:users)** as a single source of truth for user presence, ensuring consistency in distributed environments.
 
@@ -45,38 +45,56 @@
 
 ---
 
-## Architecture
+## System Architecture
 
-```
-┌─────────────────────────────────────┐
-│           Frontend (React)          │
-│  ┌──────────┐ ┌──────┐ ┌────────┐  │
-│  │  Monaco   │ │  AI  │ │Version │  │
-│  │  Editor   │ │Panel │ │History │  │
-│  └────┬─────┘ └──┬───┘ └───┬────┘  │
-│       │          │          │       │
-│  ┌────┴──────────┴──────────┴────┐  │
-│  │         Hooks Layer           │  │
-│  │  useCollaboration             │  │
-│  │  useAI (SSE streaming)        │  │
-│  │  useEditorPersistence         │  │
-│  └────┬──────────┬──────────┬────┘  │
-└───────┼──────────┼──────────┼───────┘
-        │ WebSocket│ REST/SSE │ REST
-        │          │          │
-┌───────┼──────────┼──────────┼───────┐
-│       │   Backend (Express)  │      │
-│  ┌────┴────┐ ┌───┴───┐ ┌───┴────┐  │
-│  │Socket.IO│ │  AI   │ │  Room  │  │
-│  │ Server  │ │Service│ │Service │  │
-│  └────┬────┘ └───┬───┘ └───┬────┘  │
-│       │          │          │       │
-│  ┌────┴──────────┴──────────┴────┐  │
-│  │         Data Layer            │  │
-│  │  PostgreSQL       Redis       │  │
-│  │  (Prisma ORM)  (state/adapter)│  │
-│  └───────────────────────────────┘  │
-└─────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Client["🖥️ Frontend · React 19 + Vite"]
+        direction LR
+        Monaco["Monaco Editor"]
+        AIP["AI Panel"]
+        VH["Version History"]
+    end
+
+    subgraph HooksLayer["🪝 Hooks Layer"]
+        direction LR
+        HC["useCollaboration"]
+        HA["useAI"]
+        HP["useEditorPersistence"]
+    end
+
+    Client --> HooksLayer
+
+    HC <-->|"WebSocket"| SocketIO
+    HA <-->|"SSE Stream"| AIRoute
+    HP <-->|"REST + JWT"| RoomRoute
+
+    subgraph Server["⚙️ Backend · Express 5"]
+
+        MW["Middleware\nHelmet · CORS · Rate Limit · JWT · Zod"]
+
+        subgraph Core["Services"]
+            direction LR
+            SocketIO["Socket.IO Server\n+ Redis Adapter"]
+            AIRoute["AI Service\nGemini 2.5 Flash"]
+            RoomRoute["Room Service"]
+            CompileSvc["Compile Service"]
+        end
+
+        MW --> Core
+    end
+
+    CompileSvc -->|"HTTP"| Judge0["Judge0 API"]
+    AIRoute -->|"API"| Gemini["Google Gemini"]
+
+    subgraph DataStores["💾 Data Layer"]
+        direction LR
+        PG["PostgreSQL · Prisma\nUser · Room · Snapshot · AIMessage"]
+        RD["Redis\nRoom State · Presence · Pub/Sub"]
+    end
+
+    Core --> DataStores
+    SocketIO -.->|"horizontal scaling"| RD
 ```
 
 ---
@@ -142,7 +160,7 @@ smart-code-lab/
 
 - **Node.js** ≥ 20
 - **npm** ≥ 9
-- **PostgreSQL** (local or hosted, e.g., Neon)
+- **PostgreSQL** (local or hosted, e.g., Neon DB)
 - **Redis** (local or hosted, e.g., Render Redis)
 - **Gemini API Key** — [Get one here](https://aistudio.google.com/apikey)
 
@@ -285,7 +303,6 @@ frontend job (runs after backend passes):
 | **Yjs / CRDT Integration**  | 🔵 Next Major | Replace keystroke broadcasting with binary delta sync for better concurrency |
 | **Docker Compose**          | 🟡 Medium     | Redis + PostgreSQL + App in one-command setup                                |
 | **More Languages**          | 🟡 Medium     | Java, Go, Rust, etc.                                                         |
-| **Room Sharing Link**       | 🟢 Easy       | Copy-to-clipboard shareable URL                                              |
 | **AI Context Awareness**    | 🔵 Future     | Pass execution output to Gemini for smarter debugging                        |
 | **JWT Blacklist on Logout** | 🟢 Easy       | `redis.set(blacklist:${token})` with TTL                                     |
 
