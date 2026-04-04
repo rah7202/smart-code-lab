@@ -4,7 +4,6 @@ import { logger } from "../utils/logger";
 import { prisma } from "../db/prisma"
 import http from "http";
 import jwt from "jsonwebtoken";
-import { RoomParticipants } from "../store/roomParticipants";
 
 import { redis, redisSub } from "../db/redis";
 import  { createAdapter } from "@socket.io/redis-adapter";
@@ -16,12 +15,9 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "http://localhost:5173")
     .split(",")
     .map((o) => o.trim());
 
-const SocketToColor = new Map<string, string>();
-
 const USER_COLORS = [
     "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4",
-    "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F"
-];
+    "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F" ];
 
 interface ParsedUser { 
     userId: string; 
@@ -69,8 +65,7 @@ export const initSocket = (server: http.Server) => {
             if (!RoomId) return;
             const existingRoom = await redis.get(`socket:${socket.id}:room`);
             if (existingRoom) return;
-            //if (SocketToRoom.has(socket.id)) return;
-
+            
             const user = socket.data.user; // from JWT
             if (!user) return;
             const userId = user.userId;
@@ -93,12 +88,6 @@ export const initSocket = (server: http.Server) => {
             socket.join(RoomId);
             await redis.set(`socket:${socket.id}:room`, RoomId);
 
-            // ROOM PARTICIPANTS
-            if (!RoomParticipants.has(RoomId)) {
-                RoomParticipants.set(RoomId, new Set());
-            }
-            RoomParticipants.get(RoomId)!.add(userId);
-
             const usersKey = `room:${RoomId}:users`;
 
             // get existing users
@@ -107,8 +96,7 @@ export const initSocket = (server: http.Server) => {
 
             // assign color
             const color = USER_COLORS[userCount % USER_COLORS.length] ?? "#4ECDCA";
-            SocketToColor.set(socket.id, color);
-
+            
             // store user
             await redis.hSet(
                 usersKey,
@@ -176,7 +164,15 @@ export const initSocket = (server: http.Server) => {
             if (!roomId) return;
 
             const user = socket.data.user;
-            const color = SocketToColor.get(socket.id) ?? "#4ECDCA";
+            
+            const userStr = await redis.hGet(`room:${roomId}:users`, socket.id);
+            let color = "#4ECDCA"
+
+            if (userStr) {
+                try {
+                    color = JSON.parse(userStr).color;
+                } catch {}
+            }
 
             // broadcast to others in the room
             socket.to(roomId).emit("cursor-move", 
@@ -197,7 +193,6 @@ export const initSocket = (server: http.Server) => {
                 if (!socket.data.user) return;
                 const user = socket.data.user;
                 const userId = user?.userId;
-                //const room = RoomToUsers.get(roomId);
                 const usersKey = `room:${roomId}:users`;
 
                 // REMOVE FROM PARTICIPANTS
@@ -214,23 +209,7 @@ export const initSocket = (server: http.Server) => {
                             try { return JSON.parse(u); } catch { return null; }
                         })
                         .filter(Boolean);
-
-                    // check still connected
-                    const stillConnected = parsedUsers
-                        .some(
-                            (u: any) =>
-                            u.userId === userId && u.socketId !== socket.id
-                        );
-
-                    // updated participants
-                    if (!stillConnected) {
-                        RoomParticipants.get(roomId)?.delete(userId);
-
-                        if (RoomParticipants.get(roomId)?.size === 0) {
-                            RoomParticipants.delete(roomId);
-                        }
-                    }
-
+  
                     const uniqueUsersMap = new Map();
 
                     for (const u of parsedUsers) {
@@ -250,7 +229,7 @@ export const initSocket = (server: http.Server) => {
                 }
 
                 await redis.del(`socket:${socket.id}:room`);
-                SocketToColor.delete(socket.id);
+                //SocketToColor.delete(socket.id);
 
                 logger.info("[SOCKET] User disconnected", { socketId: socket.id, roomId });
             }
