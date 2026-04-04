@@ -144,7 +144,6 @@ export const initSocket = (server: http.Server) => {
 
         // CODE EDITOR
         socket.on("content-edited", async ({ code, language }: RoomPayload) => {
-            //const roomId = SocketToRoom.get(socket.id);
             const roomId = await redis.get(`socket:${socket.id}:room`);
             if (!roomId) return;
    
@@ -229,8 +228,6 @@ export const initSocket = (server: http.Server) => {
                 }
 
                 await redis.del(`socket:${socket.id}:room`);
-                //SocketToColor.delete(socket.id);
-
                 logger.info("[SOCKET] User disconnected", { socketId: socket.id, roomId });
             }
         });
