@@ -45,8 +45,10 @@ export default function RightPanel({
     aiOutputRef, bottomRef,
     handleRestoreSnapshot
 }: RightPanelProps) {
+
+    
     return (
-        <div className="w-1/3 bg-gray-900 text-white p-2 flex flex-col gap-2 min-h-0">
+        <div className="w-1/3 bg-gray-900 text-white p-2 flex flex-col gap-2 min-h-0 overflow-y-auto">
 
             <CodeInputPanel
                 userInput={userInput}
