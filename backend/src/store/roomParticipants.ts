@@ -1,1 +1,0 @@
-export const RoomParticipants = new Map<string, Set<string>>();
