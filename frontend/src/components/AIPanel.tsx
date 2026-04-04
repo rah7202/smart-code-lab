@@ -5,6 +5,7 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { FiCopy } from "react-icons/fi";
 import { IoSend } from "react-icons/io5";
 import { AiOutlineClear } from "react-icons/ai";
+import { useRef, useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import api from "../lib/authAxios";
 
@@ -46,6 +47,53 @@ export default function AIPanel({
     isRunning, userOutput,
     aiOutputRef, bottomRef,
 }: AIPanelProps) {
+
+    // ── Resizable AI output panel ─────────────────────────────────────────────
+    const AI_MIN_HEIGHT = 120;
+    const AI_DEFAULT_HEIGHT = 340;
+    const [aiPanelHeight, setAiPanelHeight] = useState(AI_DEFAULT_HEIGHT);
+    const aiPanelHeightRef = useRef(AI_DEFAULT_HEIGHT); // always current, no stale closure
+    const dragStartY = useRef<number>(0);
+
+    // Keep ref in sync with state so onDragStart never reads stale height
+    const handleHeightChange = (h: number) => {
+        aiPanelHeightRef.current = h;
+        setAiPanelHeight(h);
+    };
+
+    // Auto-grow when new messages arrive (up to 500px max, then scroll)
+    const prevHistoryLen = useRef(history.length);
+    if (history.length !== prevHistoryLen.current) {
+        prevHistoryLen.current = history.length;
+        if (aiPanelHeightRef.current < 500) {
+            const grown = Math.min(500, aiPanelHeightRef.current + 60);
+            handleHeightChange(grown);
+        }
+    }
+
+    const onDragStart = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        dragStartY.current = e.clientY;
+        const startHeight = aiPanelHeightRef.current; // read from ref — never stale
+
+        const onMouseMove = (ev: MouseEvent) => {
+            const delta = dragStartY.current - ev.clientY;
+            const newHeight = Math.max(AI_MIN_HEIGHT, startHeight + delta);
+            handleHeightChange(newHeight);
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+        };
+
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "ns-resize";
+        document.body.style.userSelect = "none";
+    }, []); // stable — reads height from ref, not closure
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -173,11 +221,27 @@ export default function AIPanel({
                 )}
             </div>
 
-            {/* AI CHAT OUTPUT */}
+            {/* DRAG HANDLE — sits between output box and AI panel */}
+            <div
+                onMouseDown={onDragStart}
+                className="group flex items-center justify-center h-2 cursor-ns-resize
+                           rounded-full mx-1 hover:bg-white/8 transition-colors shrink-0"
+                title="Drag to resize AI panel"
+            >
+                {/* Visual grip dots */}
+                <div className="flex gap-1 opacity-30 group-hover:opacity-70 transition-opacity">
+                    {[0, 1, 2].map((i) => (
+                        <span key={i} className="w-1 h-1 rounded-full bg-white/60" />
+                    ))}
+                </div>
+            </div>
+
+            {/* AI CHAT OUTPUT — resizable */}
             <div
                 ref={aiOutputRef}
-                className="flex-1 bg-gray-800/60 border border-white/8 rounded-xl
-                           overflow-auto min-h-0 relative"
+                className="bg-gray-800/60 border border-white/8 rounded-xl
+                           overflow-auto relative shrink-0"
+                style={{ height: aiPanelHeight }}
             >
                 {/* Sticky header */}
                 <div className="sticky top-0 flex items-center justify-between px-3 py-2
