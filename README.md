@@ -2,9 +2,15 @@
 
 > _Code together. Think faster._
 
-- A real-time collaborative code editor with AI-powered assistance. Multiple users can simultaneously write, edit, and debug code in the same room — with live cursor tracking, instant code synchronization, and an AI assistant powered by Google Gemini that streams responses in real-time.
+- **Core System:** A real-time collaborative code editor with AI-powered assistance. Multiple users can simultaneously write, edit, and debug code in the same room — with live cursor tracking, instant code synchronization, and an AI assistant powered by Google Gemini that streams responses in real-time.
 
-- Designed a stateless backend architecture by replacing in-memory state with Redis, enabling horizontal scaling across multiple server instances.
+- **Scalability:** Designed a stateless backend architecture by replacing in-memory state with Redis, enabling horizontal scaling across multiple server instances.
+
+- **AI Integration:** Implemented an AI assistant with streaming responses (SSE), delivering real-time incremental outputs similar to ChatGPT.
+
+- **Distribution:** Developed a Redis-based data model **(room:{id}:users)** as a single source of truth for user presence, ensuring consistency in distributed environments.
+
+- **Persistence + reliability:** Built a snapshot persistence system with authenticated fetch keepalive, ensuring code is saved reliably even during page unload events.
 
 [![CI Pipeline](https://github.com/rah7202/smart-code-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/rah7202/smart-code-lab/actions)
 
