@@ -49,7 +49,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph Client["🖥️ Frontend · React 19 + Vite"]
+    subgraph Client["🖥️ Frontend · React + Vite"]
         direction LR
         Monaco["Monaco Editor"]
         AIP["AI Panel"]
@@ -69,7 +69,7 @@ flowchart TB
     HA <-->|"SSE Stream"| AIRoute
     HP <-->|"REST + JWT"| RoomRoute
 
-    subgraph Server["⚙️ Backend · Express 5"]
+    subgraph Server["⚙️ Backend · Express"]
 
         MW["Middleware\nHelmet · CORS · Rate Limit · JWT · Zod"]
 
@@ -89,7 +89,7 @@ flowchart TB
 
     subgraph DataStores["💾 Data Layer"]
         direction LR
-        PG["PostgreSQL · Prisma\nUser · Room · Snapshot · AIMessage"]
+        PG["PostgreSQL · Prisma ORM\nUser · Room · Snapshot · AIMessage"]
         RD["Redis\nRoom State · Presence · Pub/Sub"]
     end
 
