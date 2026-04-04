@@ -19,6 +19,13 @@ import express from "express";
 import roomRoutes from "../../routes/room.route";
 import { makeRoom, getRoomById  } from "../../services/room.service";
 import { prisma } from "../../db/prisma";
+import { redis } from "../../db/redis";
+
+jest.mock("../../db/redis", () => ({
+  redis: {
+    hGetAll: jest.fn(),
+  },
+}));
 
 const mockMakeRoom = makeRoom as jest.Mock;
 const mockUpdate      = prisma.room.update     as jest.Mock;
@@ -33,7 +40,6 @@ app.use(express.json());
 app.use("/", roomRoutes);
 
 beforeEach(() => jest.clearAllMocks());
-
 
 
 // ── room.service unit tests ───────────────────────────────────────────────────
@@ -136,25 +142,44 @@ describe("POST /:roomId/save — saveRoomCode", () => {
 
     it("updates room and returns { success: true }", async () => {
         mockFindUnique.mockResolvedValueOnce({
-            id: "room-123", code: "console.log('hi')", language: "javascript", createdAt: new Date(), userId: "test-user",
+            id: "room-123",
+            code: "console.log('hi')",
+            language: "javascript",
+            createdAt: new Date(),
+            userId: "test-user",
         });
 
         mockUpdate.mockResolvedValueOnce({
-            id: "room-123", code: "print('hi')", language: "python", createdAt: new Date(),
+            id: "room-123",
+            code: "print('hi')",
+            language: "python",
+            createdAt: new Date(),
+        });
+
+        // Redis mock (Jest)
+        (redis.hGetAll as jest.Mock).mockResolvedValueOnce({
+            "socket-1": JSON.stringify({
+                userId: "test-user",
+                socketId: "socket-1",
+                username: "rahul",
+                color: "#fff",
+            }),
         });
 
         const res = await request(app)
             .post("/room-123/save")
             .set("Authorization", `Bearer ${token}`)
-            .send({ code: "print('hi')", language: "python" }); // ✅ valid enum value
+            .send({ code: "print('hi')", language: "python" });
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
+
         expect(mockUpdate).toHaveBeenCalledWith({
             where: { id: "room-123" },
             data: { code: "print('hi')", language: "python" },
         });
     });
+
 
     it("returns 500 with { error } when DB update fails", async () => {
         mockFindUnique.mockResolvedValueOnce({
