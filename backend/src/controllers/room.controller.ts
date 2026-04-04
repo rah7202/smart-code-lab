@@ -2,7 +2,8 @@ import { Response } from "express";
 import { prisma } from "../db/prisma";
 import { makeRoom, createRoom as createRoomService } from "../services/room.service";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { RoomParticipants } from "../store/roomParticipants";
+import { redis } from "../db/redis";
+// import { RoomParticipants } from "../store/roomParticipants";
 
 //  GET ROOM DATA
 export const getRoomData = async (req: AuthRequest, res: Response) => {
@@ -56,14 +57,21 @@ export const saveRoomCode = async (req: AuthRequest, res: Response) => {
         }
 
         const userId = req.user?.userId;
-
         if (!userId) {
             return res.status(401).json({ error: "Unauthorized"});
         }
 
         const isOwner = room.userId === userId;
-        const isParticipant = RoomParticipants.get(roomId)?.has(userId);
+        //const isParticipant = RoomParticipants.get(roomId)?.has(userId);
 
+        const users = await redis.hGetAll(`room:${roomId}:users`);
+        const isParticipant = Object.values(users)
+            .map(u => {
+                try { return JSON.parse(u); } catch { return null; }
+            })
+            .filter(Boolean)
+            .some((u: any) => u.userId === userId);
+              
         if (!isOwner && !isParticipant) {
             return res.status(403).json({ error: "Unauthorized" });
         }
