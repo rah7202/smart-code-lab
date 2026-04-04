@@ -3,7 +3,6 @@ import { prisma } from "../db/prisma";
 import { makeRoom, createRoom as createRoomService } from "../services/room.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { redis } from "../db/redis";
-// import { RoomParticipants } from "../store/roomParticipants";
 
 //  GET ROOM DATA
 export const getRoomData = async (req: AuthRequest, res: Response) => {
@@ -62,8 +61,6 @@ export const saveRoomCode = async (req: AuthRequest, res: Response) => {
         }
 
         const isOwner = room.userId === userId;
-        //const isParticipant = RoomParticipants.get(roomId)?.has(userId);
-
         const users = await redis.hGetAll(`room:${roomId}:users`);
         const isParticipant = Object.values(users)
             .map(u => {
