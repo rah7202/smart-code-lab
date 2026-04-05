@@ -59,7 +59,96 @@ frontend/
 
 ## Architecture
 
-### EditorPage — The Orchestration Hub
+### System Architecture
+
+```mermaid
+%%{init: {'theme': 'base'}}%%
+flowchart TB
+
+    subgraph Pages["🖥️ Pages (React Router)"]
+        Login["Login"]
+        Signup["Signup"]
+        Home["Home"]
+        Editor["Editor Page"]
+    end
+
+    Login & Signup -->|"JWT token"| Home
+    Home -->|"/editor/:roomId"| Editor
+
+    subgraph EditorLayout["📐 Editor Page Layout"]
+        direction LR
+
+        subgraph Left["Editor Panel (2/3)"]
+            Monaco["Monaco Editor\n(Uncontrolled)"]
+            Toolbar["Selection Toolbar\nExplain · Review · Fix · Optimize"]
+        end
+
+        subgraph Right["Right Panel (1/3)"]
+            Input["Code Input + Run"]
+            AI["AI Chat Panel\n(Resizable)"]
+            Versions["Version History"]
+        end
+    end
+
+    Editor --> EditorLayout
+
+    subgraph Hooks["🪝 Custom Hooks (Separation of Concerns)"]
+      direction TB
+
+      spacer1[" "]:::invisible
+
+      usePersist["useEditorPersistence\n───\nDB load/save\nCtrl+S snapshots\nDebounced auto-save\nbeforeunload backup"]
+
+      useCollab["useCollab\n(Realtime Sync)\n───\nSocket.IO lifecycle\nRoom join/leave\nCursor decorations\nCode broadcast"]
+
+      useAI["useAI\n───\nSSE stream reader\nRate limit (5/min)\n3 modes: code · selection · question\nChat history state"]
+    end
+
+    Monaco -->|"onChange\n(user keystrokes only)"| usePersist
+    Monaco -->|"emitCodeChange"| useCollab
+    Toolbar -->|"onAsk(prompt, code)"| useAI
+    Input -->|"analyzeCode()"| useAI
+
+    useCollab -->|"applyCode()\ncursor CSS"| Monaco
+    usePersist -->|"applyCode()\napplyLang()"| Monaco
+
+    subgraph Transport["📡 Communication Layer"]
+      direction LR
+
+      spacer2[" "]:::invisible
+
+      Axios["Axios\n(REST + JWT)"]
+      Socket["Socket.IO\n(WebSocket)"]
+      SSE["fetch\n(SSE Stream)"]
+    end
+
+    usePersist --> Axios
+    useCollab --> Socket
+    useAI --> SSE
+
+    Backend["⚙️ Backend API\nhttp://localhost:8000"]
+
+    Axios & Socket & SSE --> Backend
+
+    %% 🎨 CLASS DEFINITIONS
+    classDef pages fill:#3b82f6,stroke:#1e40af,color:#fff
+    classDef layout fill:#10b981,stroke:#065f46,color:#fff
+    classDef hooks fill:#f59e0b,stroke:#92400e,color:#fff
+    classDef transport fill:#8b5cf6,stroke:#5b21b6,color:#fff
+    classDef backend fill:#ef4444,stroke:#7f1d1d,color:#fff
+    classDef invisible fill:transparent,stroke:none,color:transparent
+
+
+    %% 🎯 APPLY CLASSES
+    class Login,Signup,Home,Editor pages
+    class Monaco,Toolbar,Input,AI,Versions layout
+    class usePersist,useCollab,useAI hooks
+    class Axios,Socket,SSE transport
+    class Backend backend
+    class spacer1,spacer2 invisible
+```
+
+### Editor Page — The Orchestration Hub
 
 `EditorPage.tsx` is the main page component. It owns Monaco, refs, and imperative helpers — but delegates all business logic to three custom hooks:
 

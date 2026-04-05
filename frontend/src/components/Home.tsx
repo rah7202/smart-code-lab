@@ -5,12 +5,15 @@ import toast from "react-hot-toast";
 import { socket } from "../socket";
 import { getUserFromToken } from "../utils/auth";
 import { AxiosError } from "axios";
+import { FiCopy } from "react-icons/fi";
+import { FaCheck } from "react-icons/fa"
 
 import Footer from "./Footer";
 
 export default function Home() {
     const navigate = useNavigate();
     const [roomId, setRoomId] = useState("");
+    const [copied, setCopied] = useState(false);
 
     const user = getUserFromToken();
     const name = user?.username?.charAt(0).toUpperCase() + user?.username?.slice(1);
@@ -47,6 +50,22 @@ export default function Home() {
         toast.success("Joined room successfully");
     };
 
+    const handleCopy = async () => {
+        if (!roomId) return
+
+        try {
+            await navigator.clipboard.writeText(roomId);
+            setCopied(true);
+            toast.success("Room ID Copied");
+
+            setTimeout(() => setCopied(false), 1500);
+
+
+        } catch {
+            toast.error("Copy Failed");
+        }
+    };
+
     const handleLogout = () => {
 
         try {
@@ -71,10 +90,20 @@ export default function Home() {
                 )}
             
                 <div className="bg-gray-800 p-6 rounded-lg shadow-md w-125">
-                    <input className="w-full p-2 mb-3 rounded bg-gray-700" placeholder="Room ID" value={roomId} onChange={(e) => { setRoomId(e.target.value) }} />
-                    <button onClick={joinRoom} className="w-full bg-green-500 py-2 rounded mb-2 hover:bg-green-600 cursor-pointer">
-                        Join Room
-                    </button>
+                    <div className="relative w-full">
+                        <input className="w-full p-2 mb-3 rounded bg-gray-700" placeholder="Room ID" value={roomId} onChange={(e) => { setRoomId(e.target.value) }} />
+                        {roomId.trim() && (  
+                            <button disabled={!roomId} 
+                                onClick={handleCopy} 
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-700 cursor-pointer">
+                                {copied ? <FaCheck size={18} /> : <FiCopy size={18} />} 
+                            </button> 
+                        )}
+                    </div>
+                        <button onClick={joinRoom} className="w-full bg-green-500 py-2 rounded mb-2 hover:bg-green-600 cursor-pointer">
+                            Join Room
+                        </button>
+                    
                     <button onClick={handleLogout} className="w-full bg-blue-500 py-2 rounded mb-2 hover:bg-blue-600 cursor-pointer">
                         Logout
                     </button>

@@ -67,6 +67,138 @@ backend/
 
 ## Architecture
 
+### System Architecture
+
+```mermaid
+
+%%{init: {'theme': 'base'}}%%
+flowchart LR
+
+    Client["🌐 Client\n(Browser)"]
+
+    subgraph MiddlewarePipeline["🛡️ Middleware Pipeline"]
+        direction TB
+        M1["Helmet\nSecurity Headers"]
+        M2["CORS\nOrigin Allowlist"]
+        M3["Body Parser\nJSON · 50KB limit"]
+        M4["Rate Limiter\n100 req/min"]
+        M1 --> M2 --> M3 --> M4
+    end
+
+    Client -->|"HTTP / REST"| MiddlewarePipeline
+
+    subgraph AuthGate["🔐 Auth Gate"]
+        direction TB
+        JWT["JWT Verify\nExtract userId"]
+        ZOD["Zod Validate\nSchema check"]
+        JWT --> ZOD
+    end
+
+    MiddlewarePipeline --> AuthGate
+
+    subgraph API["📋 API Routes"]
+        direction TB
+
+        subgraph R1["Auth"]
+            A1["POST /signup"]
+            A2["POST /signin"]
+        end
+
+        subgraph R2["Room"]
+            B1["GET /:roomId"]
+            B2["POST /create"]
+            B3["POST /:roomId/save"]
+        end
+
+        subgraph R3["Compile"]
+            C1["POST /compile"]
+        end
+
+        subgraph R4["AI"]
+            D1["POST /generate"]
+            D2["POST /stream ← SSE"]
+            D3["GET /history/:roomId"]
+            D4["DELETE /history/:roomId"]
+        end
+
+        subgraph R5["Snapshot"]
+            E1["POST /:roomId"]
+            E2["GET /:roomId"]
+        end
+    end
+
+    AuthGate --> API
+
+    subgraph Services["⚙️ Service Layer"]
+        direction TB
+        AuthSvc["Auth Service\nbcrypt + JWT sign"]
+        RoomSvc["Room Service\nFind or Create"]
+        CompileSvc["Judge0 Service\nCode Execution"]
+        AISvc["AI Service\nGemini 2.5 Flash\nBatch + Stream"]
+        SnapSvc["Snapshot Service\nDeduplicated Save"]
+    end
+
+    R1 --> AuthSvc
+    R2 --> RoomSvc
+    R3 --> CompileSvc
+    R4 --> AISvc
+    R5 --> SnapSvc
+
+    subgraph DataLayer["💾 Data Stores"]
+        direction TB
+        PG["PostgreSQL\n(Prisma ORM)\n───\nUser · Room\nCodeSnapshot\nAIMessage"]
+        RD["Redis\n───\nRoom state\nUser presence\nSocket mapping"]
+    end
+
+    AuthSvc & RoomSvc & SnapSvc --> PG
+    RoomSvc --> RD
+
+    subgraph External["🌍 External APIs"]
+        direction TB
+        Judge0["Judge0 CE\nCode Runner"]
+        Gemini["Google Gemini\nAI Generation"]
+    end
+
+    CompileSvc --> Judge0
+    AISvc --> Gemini
+
+    WSClient["🔌 Socket.IO\nClient"]
+
+    subgraph SocketServer["🔌 Socket.IO Server"]
+        direction TB
+        SAuth["JWT Handshake Auth"]
+        SEvents["Events\n───\njoin · content-edited\ncursor-move · disconnect"]
+        SAdapter["Redis Adapter\nMulti-server pub/sub"]
+        SAuth --> SEvents --> SAdapter
+    end
+
+    WSClient -->|"WebSocket"| SocketServer
+    SAdapter --> RD
+    SEvents --> PG
+
+    %% 🎨 COLOR DEFINITIONS
+    classDef client fill:#3b82f6,stroke:#1e40af,color:#fff
+    classDef core fill:#10b981,stroke:#065f46,color:#fff
+    classDef service fill:#f59e0b,stroke:#92400e,color:#fff
+    classDef socket fill:#8b5cf6,stroke:#5b21b6,color:#fff
+    classDef data fill:#ef4444,stroke:#7f1d1d,color:#fff
+    classDef external fill:#f3f4f6,stroke:#9ca3af,color:#111
+
+    %% 🎯 APPLY COLORS
+    class Client client
+
+    class M1,M2,M3,M4,JWT,ZOD,A1,A2,B1,B2,B3,C1,D1,D2,D3,D4,E1,E2 core
+
+    class AuthSvc,RoomSvc,CompileSvc,AISvc,SnapSvc service
+
+    class WSClient,SAuth,SEvents,SAdapter socket
+
+    class PG,RD data
+
+    class Judge0,Gemini external
+
+```
+
 ### Request Flow
 
 ```
@@ -79,10 +211,10 @@ Client Request
  CORS (origin allowlist)
       │
       ▼
- Rate Limiter (global: 100/min, AI: 10/min)
+ Body Parser (50KB limit)
       │
       ▼
- Body Parser (50KB limit)
+ Rate Limiter (global: 100/min, AI: 10/min)
       │
       ▼
  authenticate middleware (JWT verify)
@@ -545,7 +677,7 @@ Room (1) ──→ (N) AIMessage
 # Run all tests with coverage
 npm test
 
-# Coverage thresholds: 70% lines, 70% functions
+# Coverage thresholds: 70% lines, 60% functions
 ```
 
 Test environment variables are set in `src/__tests__/envSetup.ts` — `JWT_SECRET`, `NODE_ENV=test`, and `DATABASE_URL` are all provided so no real database is needed (Prisma is mocked).
