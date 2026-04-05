@@ -93,7 +93,7 @@ flowchart TB
     Editor --> EditorLayout
 
     subgraph Hooks["🪝 Custom Hooks (Separation of Concerns)"]
-        direction LR
+        direction TB
         usePersist["useEditorPersistence\n───\nDB load/save\nCtrl+S snapshots\nDebounced auto-save\nbeforeunload backup"]
 
         useCollab["useCollab\n(Realtime Sync)\n───\nSocket.IO lifecycle\nRoom join/leave\nCursor decorations\nCode broadcast"]
