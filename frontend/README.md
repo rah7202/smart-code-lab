@@ -96,12 +96,18 @@ flowchart TB
       direction TB
 
       spacer1[" "]:::invisible
-
+<!--
       usePersist["useEditorPersistence\n───\nDB load/save\nCtrl+S snapshots\nDebounced auto-save\nbeforeunload backup"]
 
       useCollab["useCollab\n(Realtime Sync)\n───\nSocket.IO lifecycle\nRoom join/leave\nCursor decorations\nCode broadcast"]
 
-      useAI["useAI\n───\nSSE stream reader\nRate limit (5/min)\n3 modes: code · selection · question\nChat history state"]
+      useAI["useAI\n───\nSSE stream reader\nRate limit (5/min)\n3 modes: code · selection · question\nChat history state"] -->
+
+      usePersist["\nuseEditorPersistence\n───\nDB load/save\nCtrl+S snapshots\nDebounced auto-save\nbeforeunload backup"]
+
+      useCollab["\nuseCollab\n(Realtime Sync)\n───\nSocket.IO lifecycle\nRoom join/leave\nCursor decorations\nCode broadcast"]
+
+      useAI["\nuseAI\n───\nSSE stream reader\nRate limit (5/min)\n3 modes: code · selection · question\nChat history state"]
     end
 
     Monaco -->|"onChange\n(user keystrokes only)"| usePersist
@@ -117,9 +123,13 @@ flowchart TB
 
       spacer2[" "]:::invisible
 
-      Axios["Axios\n(REST + JWT)"]
+      <!-- Axios["Axios\n(REST + JWT)"]
       Socket["Socket.IO\n(WebSocket)"]
-      SSE["fetch\n(SSE Stream)"]
+      SSE["fetch\n(SSE Stream)"] -->
+
+      Axios["\nAxios\n(REST + JWT)"]
+      Socket["\nSocket.IO\n(WebSocket)"]
+      SSE["\nfetch\n(SSE Stream)"]
     end
 
     usePersist --> Axios
