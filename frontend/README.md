@@ -90,7 +90,7 @@ flowchart TB
         end
     end
 
-    Editor --> Editor Layout
+    Editor --> EditorLayout
 
     subgraph Hooks["🪝 Custom Hooks (Separation of Concerns)"]
         direction LR
