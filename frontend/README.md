@@ -61,8 +61,7 @@ frontend/
 
 ### System Architecture
 
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#3b82f6', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#f3f4f6'}}}%%
+%%{init: {'theme': 'base'}}%%
 flowchart TB
 
     subgraph Pages["🖥️ Pages (React Router)"]
@@ -123,7 +122,20 @@ flowchart TB
     Backend["⚙️ Backend API\nhttp://localhost:8000"]
 
     Axios & Socket & SSE --> Backend
-```
+
+    %% 🎨 CLASS DEFINITIONS
+    classDef pages fill:#3b82f6,stroke:#1e40af,color:#fff
+    classDef layout fill:#10b981,stroke:#065f46,color:#fff
+    classDef hooks fill:#f59e0b,stroke:#92400e,color:#fff
+    classDef transport fill:#8b5cf6,stroke:#5b21b6,color:#fff
+    classDef backend fill:#ef4444,stroke:#7f1d1d,color:#fff
+
+    %% 🎯 APPLY CLASSES
+    class Login,Signup,Home,Editor pages
+    class Monaco,Toolbar,Input,AI,Versions layout
+    class usePersist,useCollab,useAI hooks
+    class Axios,Socket,SSE transport
+    class Backend backend
 
 ### Editor Page — The Orchestration Hub
 
