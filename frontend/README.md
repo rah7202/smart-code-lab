@@ -93,12 +93,15 @@ flowchart TB
     Editor --> EditorLayout
 
     subgraph Hooks["🪝 Custom Hooks (Separation of Concerns)"]
-        direction TB
-        usePersist["useEditorPersistence\n───\nDB load/save\nCtrl+S snapshots\nDebounced auto-save\nbeforeunload backup"]
+      direction TB
 
-        useCollab["useCollab\n(Realtime Sync)\n───\nSocket.IO lifecycle\nRoom join/leave\nCursor decorations\nCode broadcast"]
+      spacer1[" "]:::invisible
 
-        useAI["useAI\n───\nSSE stream reader\nRate limit (5/min)\n3 modes: code · selection · question\nChat history state"]
+      usePersist["useEditorPersistence\n───\nDB load/save\nCtrl+S snapshots\nDebounced auto-save\nbeforeunload backup"]
+
+      useCollab["useCollab\n(Realtime Sync)\n───\nSocket.IO lifecycle\nRoom join/leave\nCursor decorations\nCode broadcast"]
+
+      useAI["useAI\n───\nSSE stream reader\nRate limit (5/min)\n3 modes: code · selection · question\nChat history state"]
     end
 
     Monaco -->|"onChange\n(user keystrokes only)"| usePersist
@@ -110,10 +113,13 @@ flowchart TB
     usePersist -->|"applyCode()\napplyLang()"| Monaco
 
     subgraph Transport["📡 Communication Layer"]
-        direction LR
-        Axios["Axios\n(REST + JWT)"]
-        Socket["Socket.IO\n(WebSocket)"]
-        SSE["fetch\n(SSE Stream)"]
+      direction LR
+
+      spacer2[" "]:::invisible
+
+      Axios["Axios\n(REST + JWT)"]
+      Socket["Socket.IO\n(WebSocket)"]
+      SSE["fetch\n(SSE Stream)"]
     end
 
     usePersist --> Axios
