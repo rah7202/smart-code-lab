@@ -136,6 +136,8 @@ flowchart TB
     classDef hooks fill:#f59e0b,stroke:#92400e,color:#fff
     classDef transport fill:#8b5cf6,stroke:#5b21b6,color:#fff
     classDef backend fill:#ef4444,stroke:#7f1d1d,color:#fff
+    classDef invisible fill:transparent,stroke:none,color:transparent
+
 
     %% 🎯 APPLY CLASSES
     class Login,Signup,Home,Editor pages
@@ -143,6 +145,7 @@ flowchart TB
     class usePersist,useCollab,useAI hooks
     class Axios,Socket,SSE transport
     class Backend backend
+    class spacer1,spacer2 invisible
 ```
 
 ### Editor Page — The Orchestration Hub
