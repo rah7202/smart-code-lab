@@ -62,19 +62,20 @@ frontend/
 ### System Architecture
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#3b82f6', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#f3f4f6'}}}%%
 flowchart TB
 
     subgraph Pages["🖥️ Pages (React Router)"]
         Login["Login"]
         Signup["Signup"]
         Home["Home"]
-        Editor["EditorPage"]
+        Editor["Editor Page"]
     end
 
     Login & Signup -->|"JWT token"| Home
     Home -->|"/editor/:roomId"| Editor
 
-    subgraph EditorLayout["📐 EditorPage Layout"]
+    subgraph Editor Layout["📐 Editor Page Layout"]
         direction LR
 
         subgraph Left["Editor Panel (2/3)"]
@@ -89,7 +90,7 @@ flowchart TB
         end
     end
 
-    Editor --> EditorLayout
+    Editor --> Editor Layout
 
     subgraph Hooks["🪝 Custom Hooks (Separation of Concerns)"]
         direction LR
@@ -124,7 +125,7 @@ flowchart TB
     Axios & Socket & SSE --> Backend
 ```
 
-### EditorPage — The Orchestration Hub
+### Editor Page — The Orchestration Hub
 
 `EditorPage.tsx` is the main page component. It owns Monaco, refs, and imperative helpers — but delegates all business logic to three custom hooks:
 
