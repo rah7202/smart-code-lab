@@ -67,6 +67,114 @@ backend/
 
 ## Architecture
 
+### System Architecture
+
+```mermaid
+flowchart LR
+
+    Client["🌐 Client\n(Browser)"]
+
+    subgraph MiddlewarePipeline["🛡️ Middleware Pipeline"]
+        direction TB
+        M1["Helmet\nSecurity Headers"]
+        M2["CORS\nOrigin Allowlist"]
+        M3["Body Parser\nJSON · 50KB limit"]
+        M4["Rate Limiter\n100 req/min"]
+        M1 --> M2 --> M3 --> M4
+    end
+
+    Client -->|"HTTP / REST"| MiddlewarePipeline
+
+    subgraph AuthGate["🔐 Auth Gate"]
+        direction TB
+        JWT["JWT Verify\nExtract userId"]
+        ZOD["Zod Validate\nSchema check"]
+        JWT --> ZOD
+    end
+
+    MiddlewarePipeline --> AuthGate
+
+    subgraph API["📋 API Routes"]
+        direction TB
+
+        subgraph R1["Auth"]
+            A1["POST /signup"]
+            A2["POST /signin"]
+        end
+
+        subgraph R2["Room"]
+            B1["GET /:roomId"]
+            B2["POST /create"]
+            B3["POST /:roomId/save"]
+        end
+
+        subgraph R3["Compile"]
+            C1["POST /compile"]
+        end
+
+        subgraph R4["AI"]
+            D1["POST /generate"]
+            D2["POST /stream ← SSE"]
+            D3["GET /history/:roomId"]
+            D4["DELETE /history/:roomId"]
+        end
+
+        subgraph R5["Snapshot"]
+            E1["POST /:roomId"]
+            E2["GET /:roomId"]
+        end
+    end
+
+    AuthGate --> API
+
+    subgraph Services["⚙️ Service Layer"]
+        direction TB
+        AuthSvc["Auth Service\nbcrypt + JWT sign"]
+        RoomSvc["Room Service\nFind or Create"]
+        CompileSvc["Judge0 Service\nCode Execution"]
+        AISvc["AI Service\nGemini 2.5 Flash\nBatch + Stream"]
+        SnapSvc["Snapshot Service\nDeduplicated Save"]
+    end
+
+    R1 --> AuthSvc
+    R2 --> RoomSvc
+    R3 --> CompileSvc
+    R4 --> AISvc
+    R5 --> SnapSvc
+
+    subgraph DataLayer["💾 Data Stores"]
+        direction TB
+        PG["PostgreSQL\n(Prisma ORM)\n───\nUser · Room\nCodeSnapshot\nAIMessage"]
+        RD["Redis\n───\nRoom state\nUser presence\nSocket mapping"]
+    end
+
+    AuthSvc & RoomSvc & SnapSvc --> PG
+    RoomSvc --> RD
+
+    subgraph External["🌍 External APIs"]
+        direction TB
+        Judge0["Judge0 CE\nCode Runner"]
+        Gemini["Google Gemini\nAI Generation"]
+    end
+
+    CompileSvc --> Judge0
+    AISvc --> Gemini
+
+    WSClient["🔌 Socket.IO\nClient"]
+
+    subgraph SocketServer["🔌 Socket.IO Server"]
+        direction TB
+        SAuth["JWT Handshake Auth"]
+        SEvents["Events\n───\njoin · content-edited\ncursor-move · disconnect"]
+        SAdapter["Redis Adapter\nMulti-server pub/sub"]
+        SAuth --> SEvents --> SAdapter
+    end
+
+    WSClient -->|"WebSocket"| SocketServer
+    SAdapter --> RD
+    SEvents --> PG
+```
+
 ### Request Flow
 
 ```
