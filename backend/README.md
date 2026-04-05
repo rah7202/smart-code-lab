@@ -211,10 +211,10 @@ Client Request
  CORS (origin allowlist)
       │
       ▼
- Rate Limiter (global: 100/min, AI: 10/min)
+ Body Parser (50KB limit)
       │
       ▼
- Body Parser (50KB limit)
+ Rate Limiter (global: 100/min, AI: 10/min)
       │
       ▼
  authenticate middleware (JWT verify)
