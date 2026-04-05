@@ -61,7 +61,7 @@ frontend/
 
 ### System Architecture
 
-```
+```mermaid
 %%{init: {'theme': 'base'}}%%
 flowchart TB
 
