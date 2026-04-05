@@ -96,7 +96,7 @@ flowchart TB
         direction LR
         usePersist["useEditorPersistence\n───\nDB load/save\nCtrl+S snapshots\nDebounced auto-save\nbeforeunload backup"]
 
-        useCollab["useCollaboration\n───\nSocket.IO lifecycle\nRoom join/leave\nCursor decorations\nCode broadcast"]
+        useCollab["useCollab\n(Realtime Sync)\n───\nSocket.IO lifecycle\nRoom join/leave\nCursor decorations\nCode broadcast"]
 
         useAI["useAI\n───\nSSE stream reader\nRate limit (5/min)\n3 modes: code · selection · question\nChat history state"]
     end
