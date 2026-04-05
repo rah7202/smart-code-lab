@@ -70,6 +70,8 @@ backend/
 ### System Architecture
 
 ```mermaid
+
+%%{init: {'theme': 'base'}}%%
 flowchart LR
 
     Client["🌐 Client\n(Browser)"]
@@ -173,6 +175,28 @@ flowchart LR
     WSClient -->|"WebSocket"| SocketServer
     SAdapter --> RD
     SEvents --> PG
+
+    %% 🎨 COLOR DEFINITIONS
+    classDef client fill:#3b82f6,stroke:#1e40af,color:#fff
+    classDef core fill:#10b981,stroke:#065f46,color:#fff
+    classDef service fill:#f59e0b,stroke:#92400e,color:#fff
+    classDef socket fill:#8b5cf6,stroke:#5b21b6,color:#fff
+    classDef data fill:#ef4444,stroke:#7f1d1d,color:#fff
+    classDef external fill:#f3f4f6,stroke:#9ca3af,color:#111
+
+    %% 🎯 APPLY COLORS
+    class Client client
+
+    class M1,M2,M3,M4,JWT,ZOD,A1,A2,B1,B2,B3,C1,D1,D2,D3,D4,E1,E2 core
+
+    class AuthSvc,RoomSvc,CompileSvc,AISvc,SnapSvc service
+
+    class WSClient,SAuth,SEvents,SAdapter socket
+
+    class PG,RD data
+
+    class Judge0,Gemini external
+
 ```
 
 ### Request Flow
@@ -653,7 +677,7 @@ Room (1) ──→ (N) AIMessage
 # Run all tests with coverage
 npm test
 
-# Coverage thresholds: 70% lines, 70% functions
+# Coverage thresholds: 70% lines, 60% functions
 ```
 
 Test environment variables are set in `src/__tests__/envSetup.ts` — `JWT_SECRET`, `NODE_ENV=test`, and `DATABASE_URL` are all provided so no real database is needed (Prisma is mocked).
