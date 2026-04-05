@@ -59,6 +59,71 @@ frontend/
 
 ## Architecture
 
+### System Architecture
+
+```mermaid
+flowchart TB
+
+    subgraph Pages["🖥️ Pages (React Router)"]
+        Login["Login"]
+        Signup["Signup"]
+        Home["Home"]
+        Editor["EditorPage"]
+    end
+
+    Login & Signup -->|"JWT token"| Home
+    Home -->|"/editor/:roomId"| Editor
+
+    subgraph EditorLayout["📐 EditorPage Layout"]
+        direction LR
+
+        subgraph Left["Editor Panel (2/3)"]
+            Monaco["Monaco Editor\n(Uncontrolled)"]
+            Toolbar["Selection Toolbar\nExplain · Review · Fix · Optimize"]
+        end
+
+        subgraph Right["Right Panel (1/3)"]
+            Input["Code Input + Run"]
+            AI["AI Chat Panel\n(Resizable)"]
+            Versions["Version History"]
+        end
+    end
+
+    Editor --> EditorLayout
+
+    subgraph Hooks["🪝 Custom Hooks (Separation of Concerns)"]
+        direction LR
+        usePersist["useEditorPersistence\n───\nDB load/save\nCtrl+S snapshots\nDebounced auto-save\nbeforeunload backup"]
+
+        useCollab["useCollaboration\n───\nSocket.IO lifecycle\nRoom join/leave\nCursor decorations\nCode broadcast"]
+
+        useAI["useAI\n───\nSSE stream reader\nRate limit (5/min)\n3 modes: code · selection · question\nChat history state"]
+    end
+
+    Monaco -->|"onChange\n(user keystrokes only)"| usePersist
+    Monaco -->|"emitCodeChange"| useCollab
+    Toolbar -->|"onAsk(prompt, code)"| useAI
+    Input -->|"analyzeCode()"| useAI
+
+    useCollab -->|"applyCode()\ncursor CSS"| Monaco
+    usePersist -->|"applyCode()\napplyLang()"| Monaco
+
+    subgraph Transport["📡 Communication Layer"]
+        direction LR
+        Axios["Axios\n(REST + JWT)"]
+        Socket["Socket.IO\n(WebSocket)"]
+        SSE["fetch\n(SSE Stream)"]
+    end
+
+    usePersist --> Axios
+    useCollab --> Socket
+    useAI --> SSE
+
+    Backend["⚙️ Backend API\nhttp://localhost:8000"]
+
+    Axios & Socket & SSE --> Backend
+```
+
 ### EditorPage — The Orchestration Hub
 
 `EditorPage.tsx` is the main page component. It owns Monaco, refs, and imperative helpers — but delegates all business logic to three custom hooks:
