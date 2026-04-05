@@ -75,7 +75,7 @@ flowchart TB
     Login & Signup -->|"JWT token"| Home
     Home -->|"/editor/:roomId"| Editor
 
-    subgraph Editor Layout["📐 Editor Page Layout"]
+    subgraph EditorLayout["📐 Editor Page Layout"]
         direction LR
 
         subgraph Left["Editor Panel (2/3)"]
