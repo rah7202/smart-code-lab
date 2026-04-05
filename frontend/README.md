@@ -61,6 +61,7 @@ frontend/
 
 ### System Architecture
 
+```
 %%{init: {'theme': 'base'}}%%
 flowchart TB
 
@@ -136,6 +137,7 @@ flowchart TB
     class usePersist,useCollab,useAI hooks
     class Axios,Socket,SSE transport
     class Backend backend
+```
 
 ### Editor Page — The Orchestration Hub
 
