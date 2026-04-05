@@ -48,7 +48,9 @@
 ## System Architecture
 
 ```mermaid
+%%{init: {'theme': 'base'}}%%
 flowchart TB
+
     subgraph Client["🖥️ Frontend · React + Vite"]
         direction LR
         Monaco["Monaco Editor"]
@@ -95,6 +97,34 @@ flowchart TB
 
     Core --> DataStores
     SocketIO -.->|"horizontal scaling"| RD
+
+    %% 🎨 COLOR DEFINITIONS
+    classDef client fill:#3b82f6,stroke:#1e40af,color:#fff
+    classDef core fill:#10b981,stroke:#065f46,color:#fff
+    classDef service fill:#f59e0b,stroke:#92400e,color:#fff
+    classDef realtime fill:#8b5cf6,stroke:#5b21b6,color:#fff
+    classDef data fill:#ef4444,stroke:#7f1d1d,color:#fff
+    classDef external fill:#f3f4f6,stroke:#9ca3af,color:#111
+
+    %% 🎯 APPLY COLORS
+
+    %% Frontend
+    class Monaco,AIP,VH client
+
+    %% Hooks + Middleware
+    class HC,HA,HP,MW core
+
+    %% Services
+    class AIRoute,RoomRoute,CompileSvc service
+
+    %% Realtime
+    class SocketIO realtime
+
+    %% Data
+    class PG,RD data
+
+    %% External APIs
+    class Judge0,Gemini external
 ```
 
 ---
