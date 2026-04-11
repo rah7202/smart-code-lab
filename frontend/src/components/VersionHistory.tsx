@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import api from "../lib/authAxios";
 
 interface Snapshot {
@@ -16,7 +16,6 @@ interface Props {
 
 export default function VersionHistory({ roomId, onRestore, refreshTrigger }: Props) {
     const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-    const isRestoring = useRef(false);
 
     useEffect(() => {
         const fetchSnapshots = async () => {
