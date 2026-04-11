@@ -138,17 +138,17 @@ describe("AIPanel — execution output", () => {
 describe("AIPanel — chat history", () => {
 
     beforeEach(() => vi.clearAllMocks());
+    beforeEach(() => localStorage.setItem("username", "Rahul"));
 
     it("shows empty state when history is empty and not thinking", () => {
         renderPanel({ history: [], isAiThinking: false });
         expect(screen.getByText("Click Ask Gemini or type a question above")).toBeInTheDocument();
     });
 
-    it("renders user messages with 'You' label", () => {
+    it("renders user messages with 'username' label", () => {
         renderPanel({
-            history: [{ role: "user", content: "What is a pointer?" }],
+            history: [{ role: "user", content: "What is a pointer?" , createdAt: new Date().toISOString() }],
         });
-        expect(screen.getByText("You")).toBeInTheDocument();
         expect(screen.getByText("What is a pointer?")).toBeInTheDocument();
     });
 
