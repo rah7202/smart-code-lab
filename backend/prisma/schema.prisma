@@ -19,7 +19,10 @@ model User {
 model Room {
   id         String   @id @default(uuid())
   language   String
-  code       String   @db.Text
+  code       String    @db.Text 
+
+  codeUrl    String?
+  
   createdAt  DateTime @default(now())
 
   userId     String
@@ -40,19 +43,24 @@ model CodeSnapshot {
   language  String
   
   createdAt DateTime @default(now())
+  
+  codeHash  String?
 
   @@index([roomId])
 }
 
 model AIMessage {
   id        String   @id @default(uuid())
-  roomId    String
-  room      Room     @relation(fields: [roomId], references: [id])
+
+  userId    String
+  roomId    String?
+  
+  room      Room?     @relation(fields: [roomId], references: [id])
 
   role      String   // "user" | "ai"
   content   String   @db.Text
 
   createdAt DateTime @default(now())
 
-  @@index([roomId])
+  @@index([userId])
 }
