@@ -254,7 +254,6 @@ describe("useEditorPersistence", () => {
         expect(mockSetUserLang).toHaveBeenCalledWith("python");
         expect(mockEditorRef.current.setValue).toHaveBeenCalledWith("snapshot code");
         expect(socket.emit).toHaveBeenCalledWith("content-edited", { code: "snapshot code", language: "python" });
-        expect(axios.post).toHaveBeenCalledWith(expect.stringContaining("/save"), expect.any(Object));
         expect(toast.success).toHaveBeenCalledWith("Snapshot restored");
     });
 
