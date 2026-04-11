@@ -12,6 +12,18 @@ vi.mock("../lib/authAxios", () => ({
     },
 }));
 
+global.fetch = vi.fn(() =>
+  Promise.resolve({
+    ok: true,
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("data: Hello\n\n"));
+        controller.close();
+      }
+    })
+  })
+) as any;
+
 import api from "../../lib/authAxios";
 import toast from "react-hot-toast";
 import { useAI } from "../../hooks/useAI";
@@ -43,9 +55,14 @@ const defaultProps = {
     userCode: 'console.log("hello")',
     userLang: "javascript",
     roomId: "room-test-123",
+    editorRef: {
+        current: {
+            getValue: () => 'console.log("Hello")'
+        }
+    } as any,
 };
 
-function renderAI(props = {}) {
+function renderAI(props: Partial<typeof defaultProps> = {}) {
     return renderHook(() => useAI({ ...defaultProps, ...props }));
 }
 
