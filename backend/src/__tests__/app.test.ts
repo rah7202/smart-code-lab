@@ -19,7 +19,7 @@ jest.mock("../db/prisma", () => ({
 }));
 
 jest.mock("../services/ai.service", () => ({
-    generativeAIResponse: jest.fn(),
+    streamAIResponse: jest.fn(),
 }));
 
 jest.mock("../services/judge0.service", () => ({
@@ -32,6 +32,7 @@ jest.mock("../services/room.service", () => ({
 
 import request from "supertest";
 import app from "../app";
+import { streamAIResponse } from "../services/ai.service";
 
 // ── GET /health ───────────────────────────────────────────────────────────────
 
@@ -115,8 +116,8 @@ describe("Rate limiting", () => {
     });
 
     it("returns 429 with correct message when AI rate limit is exceeded", async () => {
-        const { generativeAIResponse } = require("../services/ai.service");
-        (generativeAIResponse as jest.Mock).mockResolvedValue("ok");
+        const { streamAIResponse } = require("../services/ai.service");
+        (streamAIResponse as jest.Mock).mockResolvedValue("ok");
 
         const { prisma } = require("../db/prisma");
         prisma.aIMessage.create.mockResolvedValue({ id: "1" });
@@ -125,7 +126,7 @@ describe("Rate limiting", () => {
         let aiLimitHit = false;
         for (let i = 0; i < 15; i++) {
             const res = await request(app)
-                .post("/api/ai/generate")
+                .post("/api/ai/stream")
                 .set("Authorization", `Bearer ${TEST_TOKEN}`)
                 .send({ prompt: "test", roomId: "room-1" });
 
