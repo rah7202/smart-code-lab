@@ -1,28 +1,35 @@
 import { Storage } from "@google-cloud/storage"
 
-const storage = new Storage({
-  keyFilename: "./gcp-key.json",
-});
+const isTest = process.env.NODE_ENV === "test";
 
-const bucket = storage.bucket("smart-code-lab"); // your bucket name
+const storage = isTest
+  ? null
+  : new Storage({
+      keyFilename: "./gcp-key.json",
+    });
+
+const bucket = isTest ? null : storage!.bucket("smart-code-lab");
 
 export const uploadCodeToGCS = async (code: string, roomId: string) => {
-  const file = bucket.file(`rooms/${roomId}/${Date.now()}.txt`);
+  if (process.env.NODE_ENV === "test") {
+    return `rooms/${roomId}/mock.txt`; // ✅ fake path
+  }
+
+  const file = bucket!.file(`rooms/${roomId}/${Date.now()}.txt`);
 
   await file.save(code, {
     contentType: "text/plain",
   });
 
-  // Use signed URLs with expiration
-  const [signedUrl] = await file.getSignedUrl({
-      action: "read",
-      expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-  });
   return file.name;
 };
 
 export const getCodeFromGCS = async (filePath: string) => {
-  const file = bucket.file(filePath);
+  if (process.env.NODE_ENV === "test") {
+    return "mock code"; // ✅ fake content
+  }
+
+  const file = bucket!.file(filePath);
 
   const [signedUrl] = await file.getSignedUrl({
     action: "read",
