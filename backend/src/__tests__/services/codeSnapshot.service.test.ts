@@ -20,6 +20,7 @@ import request from "supertest";
 import express from "express";
 import snapshotRoutes from "../../routes/codeSnapshot.routes";
 import { prisma } from "../../db/prisma";
+import crypto from "crypto"
 import { saveCodeSnapshot } from "../../services/codeSnapshot.service";
 
 const mockCreate    = prisma.codeSnapshot.create    as jest.Mock;
@@ -45,10 +46,10 @@ describe("codeSnapshot.service — saveCodeSnapshot", () => {
         const created = { id: "snap-1", roomId: "room-123", code: "print('hi')", language: "python", createdAt: new Date() };
         mockCreate.mockResolvedValueOnce(created);
 
-        const result = await saveCodeSnapshot("room-123", "print('hi')", "python");
+        const result = await saveCodeSnapshot("room-123", "print('hi')", "python", "print('hi')");
 
         expect(mockCreate).toHaveBeenCalledWith({
-            data: { roomId: "room-123", code: "print('hi')", language: "python" },
+            data: { roomId: "room-123", code: "print('hi')", language: "python", codeHash: expect.any(String), },
         });
         expect(result).toEqual(created);
     });
@@ -57,7 +58,7 @@ describe("codeSnapshot.service — saveCodeSnapshot", () => {
         mockFindFirst.mockResolvedValueOnce({ id: "snap-0", code: "old code", language: "python", createdAt: new Date() });
         mockCreate.mockResolvedValueOnce({ id: "snap-1" });
 
-        await saveCodeSnapshot("room-123", "new code", "python");
+        await saveCodeSnapshot("room-123", "new code", "python", "print('hi')");
         expect(mockCreate).toHaveBeenCalled();
     });
 
@@ -65,14 +66,22 @@ describe("codeSnapshot.service — saveCodeSnapshot", () => {
         mockFindFirst.mockResolvedValueOnce({ id: "snap-0", code: "print('hi')", language: "python", createdAt: new Date() });
         mockCreate.mockResolvedValueOnce({ id: "snap-1" });
 
-        await saveCodeSnapshot("room-123", "print('hi')", "javascript");
+        await saveCodeSnapshot("room-123", "print('hi')", "javascript", "console.log('hi')");
         expect(mockCreate).toHaveBeenCalled();
     });
 
     it("skips creating when code AND language are identical to last snapshot", async () => {
-        mockFindFirst.mockResolvedValueOnce({ id: "snap-0", code: "print('hi')", language: "python", createdAt: new Date() });
-
-        const result = await saveCodeSnapshot("room-123", "print('hi')", "python");
+        
+        mockFindFirst.mockResolvedValueOnce({
+            code: "print('hi')",
+            language: "python",
+            codeHash: crypto
+                .createHash("sha256")
+                .update("print('hi')")
+                .digest("hex"),
+            });
+        
+        const result = await saveCodeSnapshot("room-123", "print('hi')", "python", "print('hi')");
 
         expect(mockCreate).not.toHaveBeenCalled();
         expect(result).toBeUndefined();
@@ -82,7 +91,7 @@ describe("codeSnapshot.service — saveCodeSnapshot", () => {
         mockFindFirst.mockResolvedValueOnce(null);
         mockCreate.mockResolvedValueOnce({ id: "snap-1" });
 
-        await saveCodeSnapshot("room-123", "code", "javascript");
+        await saveCodeSnapshot("room-123", "code", "javascript", "print('hi')");
 
         expect(mockFindFirst).toHaveBeenCalledWith({
             where: { roomId: "room-123" },
@@ -92,7 +101,7 @@ describe("codeSnapshot.service — saveCodeSnapshot", () => {
 
     it("propagates DB errors from findFirst", async () => {
         mockFindFirst.mockRejectedValueOnce(new Error("DB error"));
-        await expect(saveCodeSnapshot("room-123", "code", "javascript")).rejects.toThrow("DB error");
+        await expect(saveCodeSnapshot("room-123", "code", "javascript", "print('hi')")).rejects.toThrow("DB error");
     });
 });
 
@@ -110,7 +119,7 @@ describe("POST /snapshot/:roomId — saveSnapshotController", () => {
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
         expect(mockCreate).toHaveBeenCalledWith({
-            data: { roomId: "room-123", code: 'console.log("hi")', language: "javascript" },
+            data: { roomId: "room-123", code: expect.any(String), language: "javascript", codeHash: expect.any(String), },
         });
     });
 
@@ -133,7 +142,7 @@ describe("POST /snapshot/:roomId — saveSnapshotController", () => {
             .send({ code: "#include<stdio.h>", language: "c" });
 
         expect(mockCreate).toHaveBeenCalledWith({
-            data: { roomId: "room-abc", code: "#include<stdio.h>", language: "c" },
+            data: { roomId: "room-abc", code: expect.any(String), language: "c", codeHash: expect.any(String), },
         });
     });
 });

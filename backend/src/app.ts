@@ -33,9 +33,6 @@ app.use(
    })
 );
 
-//--------BODY--PARSER--------------------------------------
-app.use(express.json({ limit: "50kb"}));
-app.use(express.text());                 
 
 //----------GLOBAL--RATE--LIMITING---------------------------
 const globalRateLimiter = rateLimit({
@@ -46,6 +43,9 @@ const globalRateLimiter = rateLimit({
     message: { error: "Too many requests, please slow down." },
 });
 app.use(globalRateLimiter);
+
+//--------BODY--PARSER--------------------------------------
+app.use(express.json({ limit: "50kb"}));               
 
 //------AI--specific--tighter--rate--limit-------------------
 export const aiRateLimiter = rateLimit({

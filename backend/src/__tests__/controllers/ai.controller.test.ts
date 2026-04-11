@@ -9,7 +9,7 @@ jest.mock("../../db/prisma", () => ({
 }));
 
 jest.mock("../../services/ai.service", () => ({
-    generativeAIResponse: jest.fn(),
+    streamAIResponse: jest.fn(),
 }));
 
 jest.mock("../../middleware/auth.middleware", () => ({
@@ -22,10 +22,11 @@ jest.mock("../../middleware/auth.middleware", () => ({
 import request from "supertest";
 import express from "express";
 import aiRoutes from "../../routes/ai.route";
-import { generativeAIResponse } from "../../services/ai.service";
 import { prisma } from "../../db/prisma";
+import { streamAIResponse } from "../../services/ai.service";
 
-const mockAIResponse = generativeAIResponse as jest.Mock;
+
+const mockStream = streamAIResponse as jest.Mock;
 const mockCreate    = prisma.aIMessage.create   as jest.Mock;
 const mockFindMany  = prisma.aIMessage.findMany  as jest.Mock;
 const mockDeleteMany = prisma.aIMessage.deleteMany as jest.Mock;
@@ -37,73 +38,84 @@ app.use("/ai", aiRoutes);
 
 beforeEach(() => jest.clearAllMocks());
 
-// ── POST /ai/generate ─────────────────────────────────────────────────────────
+// ── POST /ai/stream ─────────────────────────────────────────────────────────
 
-describe("POST /ai/generate", () => {
+async function* mockStreamGenerator() {
+    yield "Hello ";
+    yield "World";
+}
 
-    it("returns AI response and creates two DB messages (user + ai)", async () => {
+describe("POST /ai/stream", () => {
+
+    it("streams AI response and stores messages", async () => {
+        mockStream.mockReturnValueOnce(mockStreamGenerator());
+
         mockCreate.mockResolvedValue({ id: "msg-1" });
-        mockAIResponse.mockResolvedValueOnce("Recursion is when a function calls itself.");
 
         const res = await request(app)
-            .post("/ai/generate")
-            .send({ prompt: "Explain recursion", roomId: "room-123" });
+            .post("/ai/stream")
+            .send({ prompt: "hello", roomId: "room-123" });
 
         expect(res.status).toBe(200);
-        expect(res.body.success).toBe(true);
-        expect(res.body.data).toBe("Recursion is when a function calls itself.");
+
+        // SSE header check
+        expect(res.headers["content-type"]).toContain("text/event-stream");
+
+        // Response should contain streamed chunks
+        expect(res.text).toContain("Hello");
+        expect(res.text).toContain("World");
+        expect(res.text).toContain("done");
+
+        // DB calls
         expect(mockCreate).toHaveBeenCalledTimes(2);
+
+        // user message
         expect(mockCreate).toHaveBeenNthCalledWith(1, {
-            data: { roomId: "room-123", role: "user", content: "Explain recursion" },
+            data: {
+                userId: "test-user-id",
+                roomId: "room-123",
+                role: "user",
+                content: "hello",
+            },
         });
+
+        // ai message (final combined response)
         expect(mockCreate).toHaveBeenNthCalledWith(2, {
-            data: { roomId: "room-123", role: "ai", content: "Recursion is when a function calls itself." },
+            data: {
+                userId: "test-user-id",
+                roomId: "room-123",
+                role: "ai",
+                content: "Hello World",
+            },
         });
     });
 
     it("returns 400 when prompt is missing", async () => {
         const res = await request(app)
-            .post("/ai/generate")
+            .post("/ai/stream")
             .send({ roomId: "room-123" });
 
         expect(res.status).toBe(400);
         expect(res.body.error).toBe("Validation failed");
-        expect(mockAIResponse).not.toHaveBeenCalled();
-        expect(mockCreate).not.toHaveBeenCalled();
     });
 
-    it("returns 400 when prompt is falsy (empty string)", async () => {
-        const res = await request(app)
-            .post("/ai/generate")
-            .send({ prompt: "", roomId: "room-123" });
+    it("handles AI stream error", async () => {
+        async function* errorStream() {
+            throw new Error("AI failed");
+        }
 
-        expect(res.status).toBe(400);
-        expect(res.body.error).toBe("Validation failed");
-    });
-
-    it("returns 500 when Gemini throws", async () => {
-        mockCreate.mockResolvedValueOnce({ id: "msg-1" });
-        mockAIResponse.mockRejectedValueOnce(new Error("Gemini quota exceeded"));
+        mockStream.mockReturnValueOnce(errorStream());
+        mockCreate.mockResolvedValue({ id: "msg-1" });
 
         const res = await request(app)
-            .post("/ai/generate")
+            .post("/ai/stream")
             .send({ prompt: "test", roomId: "room-123" });
 
-        expect(res.status).toBe(500);
-        expect(res.body.success).toBe(false);
-        expect(res.body.error).toBe("Failed to generate response");
+        expect(res.status).toBe(200); // still 200 (stream error handled inside)
+
+        expect(res.text).toContain("error");
     });
 
-    it("returns 500 when first prisma.create fails", async () => {
-        mockCreate.mockRejectedValueOnce(new Error("DB connection lost"));
-
-        const res = await request(app)
-            .post("/ai/generate")
-            .send({ prompt: "test", roomId: "room-123" });
-
-        expect(res.status).toBe(500);
-        expect(res.body.success).toBe(false);
-    });
 });
 
 // ── GET /ai/history/:roomId ───────────────────────────────────────────────────
@@ -123,7 +135,7 @@ describe("GET /ai/history/:roomId", () => {
         expect(res.body).toHaveLength(2);
         expect(res.body[0].role).toBe("user");
         expect(mockFindMany).toHaveBeenCalledWith({
-            where: { roomId: "room-123" },
+            where: { userId: "test-user-id" },
             orderBy: { createdAt: "asc" },
         });
     });
@@ -155,7 +167,7 @@ describe("DELETE /ai/history/:roomId", () => {
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
         expect(mockDeleteMany).toHaveBeenCalledWith({
-            where: { roomId: "room-123" },
+            where: { userId: "test-user-id" },
         });
     });
 

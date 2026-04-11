@@ -19,6 +19,10 @@ build
 .env
 .env.*
 
+# storage
+
+gcp-key.json
+
 # editor files
 .vscode/*
 !.vscode/extensions.json

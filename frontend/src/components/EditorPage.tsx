@@ -150,7 +150,7 @@ export default function EditorPage() {
 
    
     // ── AI hook ───────────────────────────────────────────────────────────────
-    const ai = useAI({ userCode: persistence.userCode, userLang, roomId: roomId! });
+    const ai = useAI({ userCode: persistence.userCode, userLang, roomId: roomId!, editorRef });
 
     // ── Run code ──────────────────────────────────────────────────────────────
     const runCode = async () => {

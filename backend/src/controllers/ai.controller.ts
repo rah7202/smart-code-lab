@@ -1,51 +1,13 @@
 import { Request, Response } from "express";
 import { AIRequest } from "../types";
-import { generativeAIResponse, streamAIResponse } from "../services/ai.service";
+import { streamAIResponse } from "../services/ai.service";
 import { prisma } from "../db/prisma";
 import { logger } from "../utils/logger";
 
-
-export const generateResponse = async (req: Request<{}, {}, AIRequest>, res: Response) => {
-    const { prompt, roomId } = req.body;
-
-    try {
-        if (!prompt) return res.status(400).json({ error: "Prompt is required" });
-
-        // save user message
-        await prisma.aIMessage.create({
-            data: {
-                roomId,
-                role: "user",
-                content: prompt,
-            },
-        });
-
-        const response = await generativeAIResponse(prompt);
-
-        // save ai message
-        await prisma.aIMessage.create({
-            data: {
-                roomId,
-                role: "ai",
-                content: response,
-            },
-        });
-
-        res.json({
-            success: true,
-            data: response,
-        });
-    } catch {
-        
-        res.status(500).json({
-            success: false,
-            error: "Failed to generate response" ,
-        });
-    }
-};
-
 export const streamAiResponse = async (req: Request<{}, {}, AIRequest>, res: Response) => {
+    
     const { prompt, roomId } = req.body;
+    const userId = (req as any).user?.userId;
     if (!prompt) return res.status(400).json({ error: "Prompt required" });
 
     // SSE headers
@@ -62,7 +24,7 @@ export const streamAiResponse = async (req: Request<{}, {}, AIRequest>, res: Res
 
     req.on("close", () => { clearInterval(interval)});
 
-    await prisma.aIMessage.create({ data: { roomId, role: "user", content: prompt } });
+    await prisma.aIMessage.create({ data: { userId, roomId, role: "user", content: prompt } });
     
     let fullResponse = "";
     try {
@@ -72,29 +34,29 @@ export const streamAiResponse = async (req: Request<{}, {}, AIRequest>, res: Res
         }
 
         res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+        clearInterval(interval);
         res.end();
 
-        await prisma.aIMessage.create({ data: { roomId, role: "ai", content: fullResponse } });
-    } catch {
+        await prisma.aIMessage.create({ data: { userId, roomId, role: "ai", content: fullResponse } });
+    } catch (error) {
+        clearInterval(interval);
+        logger.error("AI Error : { error: error instanceof Error ? error.message : String(error) } ");
         res.write(`data: ${JSON.stringify({ error: "AI generation failed" })}\n\n`);
         res.end();
     }
 };
 
-
 export const getAIHistory = async (req: Request, res: Response) => {
 
-    const { roomId } = req.params;
-
+    const userId = (req as any).user?.userId;
     try {
         const messages = await prisma.aIMessage.findMany({
-            where: { roomId: roomId as string },
+            where: { userId: userId as string },
             orderBy: { createdAt: "asc" },
         });
 
         res.json(messages);
     } catch {
-        
         res.status(500).json({
             success: false,
             error: "Failed to fetch AI history",
@@ -103,11 +65,11 @@ export const getAIHistory = async (req: Request, res: Response) => {
 };
 
 export const clearAIHistory = async (req: Request, res: Response) => {
-    const { roomId } = req.params;
-
+    
+    const userId = (req as any).user?.userId;
     try {
         await prisma.aIMessage.deleteMany({
-            where: { roomId: roomId as string },
+            where: { userId: userId as string },
         });
 
         res.json({ success: true });

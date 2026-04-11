@@ -1,54 +1,44 @@
 // backend/src/__tests__/services/ai.service.test.ts
 
-jest.mock("@google/generative-ai", () => {
-    const mockGenerateContent = jest.fn();
-    return {
-        GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
-            getGenerativeModel: jest.fn().mockReturnValue({
-                generateContent: mockGenerateContent,
-            }),
-        })),
-        // ✅ export the mock fn directly so tests can access it
-        __mockGenerateContent: mockGenerateContent,
-    };
-});
 
-import { generativeAIResponse } from "../../services/ai.service";
-// @ts-ignore
-import { __mockGenerateContent as mockGenerateContent } from "@google/generative-ai";
+const mockGenerateContentStream = jest.fn();
 
-describe("ai.service — generativeAIResponse", () => {
+jest.mock("@google/generative-ai", () => ({
+    GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
+        getGenerativeModel: () => ({
+            generateContentStream: mockGenerateContentStream,
+        }),
+    })),
+}));
 
-    beforeEach(() => jest.clearAllMocks());
 
-    it("returns text from Gemini response", async () => {
-        mockGenerateContent.mockResolvedValueOnce({
-            response: { text: () => "Here is the explanation." },
+import { streamAIResponse } from "../../services/ai.service";
+
+
+describe("ai.service — streamAIResponse", () => {
+
+    it("yields chunks from Gemini stream", async () => {
+        const mockStream = async function* () {
+            yield { text: () => "Hello " };
+            yield { text: () => "World" };
+        };
+
+        mockGenerateContentStream.mockResolvedValue({
+            stream: mockStream(),
         });
 
-        const result = await generativeAIResponse("Explain recursion");
-        expect(result).toBe("Here is the explanation.");
-        expect(mockGenerateContent).toHaveBeenCalledWith("Explain recursion");
-    });
+        const chunks = [];
 
-    it("throws when prompt is empty string", async () => {
-        await expect(generativeAIResponse("")).rejects.toThrow("Prompt cannot be empty");
-    });
+        for await (const chunk of streamAIResponse("hello world")) {
+            chunks.push(chunk);
+        }
 
-    it("throws when prompt is whitespace only", async () => {
-        await expect(generativeAIResponse("   ")).rejects.toThrow("Prompt cannot be empty");
+        expect(chunks).toEqual(["Hello ", "World"]);
     });
-
-    it("propagates Gemini API errors", async () => {
-        mockGenerateContent.mockRejectedValueOnce(new Error("API quota exceeded"));
-        await expect(generativeAIResponse("test")).rejects.toThrow("API quota exceeded");
-    });
-
-    it("calls generateContent with the full prompt string", async () => {
-        mockGenerateContent.mockResolvedValueOnce({
-            response: { text: () => "ok" },
-        });
-        await generativeAIResponse("What is a pointer in C?");
-        expect(mockGenerateContent).toHaveBeenCalledWith("What is a pointer in C?");
+    
+    it("throws when prompt is empty", async () => {
+        const gen = streamAIResponse("");
+        await expect(gen.next()).rejects.toThrow("Prompt cannot be empty");
     });
 });
+

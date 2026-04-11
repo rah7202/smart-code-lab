@@ -40,10 +40,5 @@ export type CompileResponse = {
 export type AIRequest = {
     prompt: string;
     roomId: string;
-};
-
-export type AIResponse = {
-    success: boolean;
-    data?: string;
-    error?: string;
+    code: string;
 };
