@@ -135,7 +135,7 @@ export function useEditorPersistence({
         isLanguageSwitching.current = false;
 
         socket.emit("content-edited", { code, language });
-        api.post(`/room/${roomId}/save`, { code, language });
+        //api.post(`/room/${roomId}/save`, { code, language });
         setRefreshHistory(prev => prev + 1);
         toast.success("Snapshot restored");
     };
