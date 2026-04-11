@@ -1,8 +1,11 @@
 import { Response } from "express";
 import { prisma } from "../db/prisma";
 import { makeRoom, createRoom as createRoomService } from "../services/room.service";
+import { saveCodeSnapshot } from "../services/codeSnapshot.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { redis } from "../db/redis";
+import { getCodeFromGCS, uploadCodeToGCS } from "../lib/storage";
+import { logger } from "../utils/logger";
 
 //  GET ROOM DATA
 export const getRoomData = async (req: AuthRequest, res: Response) => {
@@ -12,10 +15,22 @@ export const getRoomData = async (req: AuthRequest, res: Response) => {
         const userId = req.user?.userId;
         const room = await makeRoom(roomId as string, userId);
 
+        let code = room.code;
+
+        if (room.codeUrl) {
+            try {
+                code = await getCodeFromGCS(room.codeUrl);
+            } catch {
+                logger.warn("GCS fetch failed, fallback to DB");
+            }
+        } else {
+            code = room.code;
+        }
+
         res.json({
             roomId: room.id,
             language: room.language,
-            code: room.code,
+            code
         });
     } catch {
         res.status(500).json({ error: "Failed to load room" });
@@ -72,14 +87,18 @@ export const saveRoomCode = async (req: AuthRequest, res: Response) => {
         if (!isOwner && !isParticipant) {
             return res.status(403).json({ error: "Unauthorized" });
         }
-
+        
+        const codeUrl = await uploadCodeToGCS(code, roomId);
         await prisma.room.update({
             where: { id: roomId },
             data: {
                 code,
+                codeUrl,
                 language,
             },
         });
+
+        await saveCodeSnapshot(roomId, codeUrl, language, code);
 
         res.json({ success: true });
     } catch  {
