@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
 import api from "../lib/authAxios";
+import type { editor } from "monaco-editor";
 
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW = 60_000;
@@ -9,6 +10,7 @@ interface UseAIProps {
     userCode: string;
     userLang: string;
     roomId: string;
+    editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
 }
 
 interface AIMessage {
@@ -16,7 +18,7 @@ interface AIMessage {
     content: string;
 }
 
-export function useAI({ userCode, userLang, roomId }: UseAIProps) {
+export function useAI({ userCode, userLang, roomId, editorRef }: UseAIProps) {
     const [isAiThinking, setIsAiThinking] = useState(false);
     const [rateCooldown, setRateCooldown] = useState(0);
     const [aiQuestion, setAiQuestion] = useState("");
@@ -44,13 +46,15 @@ export function useAI({ userCode, userLang, roomId }: UseAIProps) {
     useEffect(() => {
         const fetchHistory = async () => {
             try {
+                setHistory([]);
                 const res = await api.get(`/ai/history/${roomId}`);
                 setHistory(res.data);
             } catch (e) {
                 toast.error("Fetching Error");
             }
         };
-        if (roomId) fetchHistory();
+
+        fetchHistory();
     }, [roomId]);
 
 
@@ -125,13 +129,15 @@ export function useAI({ userCode, userLang, roomId }: UseAIProps) {
         const token = localStorage.getItem("token");
 
         try {
+            const currentCode = editorRef.current?.getValue() || userCode;
+
             const res = await fetch(`${URL}/api/ai/stream`, {
                 method: "POST",
                 headers: {
                     "Content-Type":"application/json",
                     "Authorization":`Bearer ${token}`,
                 },
-                body: JSON.stringify({ prompt, roomId }),
+                body: JSON.stringify({ prompt, code: currentCode, language: userLang, roomId }),
             });
             if (!res.ok) throw new Error("stream failed");
 
