@@ -58,7 +58,7 @@ export const initSocket = (server: http.Server) => {
     
     io.on("connection", (socket) => {
         logger.info("[SOCKET] Client connected", { socketId: socket.id});
-        
+
         // JOIN ROOM
         socket.on("join", async ({ RoomId }: { RoomId: string }) => {
         
@@ -86,7 +86,7 @@ export const initSocket = (server: http.Server) => {
             }
 
             socket.join(RoomId);
-            await redis.set(`socket:${socket.id}:room`, RoomId);
+            await redis.set(`socket:${socket.id}:room`, RoomId, { EX : 60 * 60 * 24 });
 
             const usersKey = `room:${RoomId}:users`;
 
@@ -103,6 +103,8 @@ export const initSocket = (server: http.Server) => {
                 socket.id,
                 JSON.stringify({ username, socketId: socket.id, userId, color })
             );
+
+            await redis.expire(usersKey, 60 * 60 * 24);
 
             // fetch updated users
             const updatedUsers = await redis.hGetAll(usersKey);
@@ -147,10 +149,8 @@ export const initSocket = (server: http.Server) => {
             const roomId = await redis.get(`socket:${socket.id}:room`);
             if (!roomId) return;
    
-            await redis.set(
-                `room:${roomId}:content`,
-                JSON.stringify({ code, language})
-            );
+            await redis.set(`room:${roomId}:content`, JSON.stringify({ code, language }), { EX: 24 * 60 * 60 } );
+            
 
             // Broadcast code changes to others in the room
             socket.to(roomId).emit("content-edited", { code, language });
