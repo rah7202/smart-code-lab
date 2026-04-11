@@ -11,6 +11,7 @@ import api from "../lib/authAxios";
 
 import geminiLogo from "../assets/geminiLogo.png";
 import type { Components } from "react-markdown";
+import { getUserFromToken } from "../utils/auth";
 
 interface AIMessage {
     role: "user" | "ai";
@@ -54,6 +55,11 @@ export default function AIPanel({
     const [aiPanelHeight, setAiPanelHeight] = useState(AI_DEFAULT_HEIGHT);
     const aiPanelHeightRef = useRef(AI_DEFAULT_HEIGHT); // always current, no stale closure
     const dragStartY = useRef<number>(0);
+    
+
+    const user = getUserFromToken();
+    const name = user?.username?.charAt(0).toUpperCase() + user?.username?.slice(1);
+    
 
     // Keep ref in sync with state so onDragStart never reads stale height
     const handleHeightChange = (h: number) => {
@@ -292,7 +298,7 @@ export default function AIPanel({
                         history.map((msg, i) => (
                             <div key={i} className="border-b border-white/5 pb-3 mb-1">
                                 <div className="text-xs text-white/40 mb-1">
-                                    {msg.role === "user" ? "You" : "Gemini"}
+                                    {msg.role === "user" ? name : "Gemini"}
                                 </div>
                                 <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
