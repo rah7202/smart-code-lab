@@ -19,7 +19,9 @@ export const saveSnapshotController = async (req: Request, res: Response) => {
         )
 
         res.json({ success: true });
-    } catch {
+    } 
+    catch (err) {
+        console.error("SNAPSHOT ERROR:", err);
         res.status(500).json({ error: "Failed to save snapshot"});
     }
 };
