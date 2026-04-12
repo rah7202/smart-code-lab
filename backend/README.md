@@ -80,8 +80,8 @@ flowchart LR
         direction TB
         M1["Helmet\nSecurity Headers"]
         M2["CORS\nOrigin Allowlist"]
-        M3["Body Parser\nJSON · 50KB limit"]
-        M4["Rate Limiter\n100 req/min"]
+        M3["Rate Limiter\n100 req/min"]
+        M4["Body Parser\nJSON · 50KB limit"]
         M1 --> M2 --> M3 --> M4
     end
 
@@ -115,10 +115,9 @@ flowchart LR
         end
 
         subgraph R4["AI"]
-            D1["POST /generate"]
-            D2["POST /stream ← SSE"]
-            D3["GET /history/:roomId"]
-            D4["DELETE /history/:roomId"]
+            D1["POST /stream ← SSE"]
+            D2["GET /history/:roomId"]
+            D3["DELETE /history/:roomId"]
         end
 
         subgraph R5["Snapshot"]
@@ -134,7 +133,7 @@ flowchart LR
         AuthSvc["Auth Service\nbcrypt + JWT sign"]
         RoomSvc["Room Service\nFind or Create"]
         CompileSvc["Judge0 Service\nCode Execution"]
-        AISvc["AI Service\nGemini 2.5 Flash\nBatch + Stream"]
+        AISvc["AI Service\nGemini 2.5 Flash\nSSE Stream Only"]
         SnapSvc["Snapshot Service\nDeduplicated Save"]
     end
 
@@ -148,9 +147,11 @@ flowchart LR
         direction TB
         PG["PostgreSQL\n(Prisma ORM)\n───\nUser · Room\nCodeSnapshot\nAIMessage"]
         RD["Redis\n───\nRoom state\nUser presence\nSocket mapping"]
+        GCS["Google Cloud Storage\n───\nCode files\nSnapshot files"]
     end
 
     AuthSvc & RoomSvc & SnapSvc --> PG
+    RoomSvc & SnapSvc --> GCS
     RoomSvc --> RD
 
     subgraph External["🌍 External APIs"]
@@ -187,16 +188,15 @@ flowchart LR
     %% 🎯 APPLY COLORS
     class Client client
 
-    class M1,M2,M3,M4,JWT,ZOD,A1,A2,B1,B2,B3,C1,D1,D2,D3,D4,E1,E2 core
+    class M1,M2,M3,M4,JWT,ZOD,A1,A2,B1,B2,B3,C1,D1,D2,D3,E1,E2 core
 
     class AuthSvc,RoomSvc,CompileSvc,AISvc,SnapSvc service
 
     class WSClient,SAuth,SEvents,SAdapter socket
 
-    class PG,RD data
+    class PG,RD,GCS data
 
     class Judge0,Gemini external
-
 ```
 
 ### Request Flow
@@ -211,10 +211,10 @@ Client Request
  CORS (origin allowlist)
       │
       ▼
- Body Parser (50KB limit)
+ Rate Limiter (global: 100/min, AI: 10/min)
       │
       ▼
- Rate Limiter (global: 100/min, AI: 10/min)
+ Body Parser (50KB limit)
       │
       ▼
  authenticate middleware (JWT verify)
@@ -223,7 +223,7 @@ Client Request
  validate middleware (Zod schema)
       │
       ▼
- Controller → Service → Prisma/Redis
+ Controller → Service → Prisma/Redis/GCS
       │
       ▼
  JSON Response
