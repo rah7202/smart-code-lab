@@ -8,7 +8,10 @@ export const streamAiResponse = async (req: Request<{}, {}, AIRequest>, res: Res
     
     const { prompt, roomId } = req.body;
     const userId = (req as any).user?.userId;
-    if (!prompt) return res.status(400).json({ error: "Prompt required" });
+
+    if (!prompt) {
+        return res.status(400).json({ error: "Prompt required" });
+    }
 
     // SSE headers
     res.writeHead(200, {
@@ -21,13 +24,20 @@ export const streamAiResponse = async (req: Request<{}, {}, AIRequest>, res: Res
     const interval = setInterval(() => {
         res.write(":\n\n");
     }, 15000);
-
+    
     req.on("close", () => { clearInterval(interval)});
 
-    await prisma.aIMessage.create({ data: { userId, roomId, role: "user", content: prompt } });
-    
-    let fullResponse = "";
     try {
+        if (!userId) {
+            res.write(`data: ${JSON.stringify({ error: "Unauthorized" })}\n\n`);
+            clearInterval(interval);
+            return res.end();
+        }
+
+        await prisma.aIMessage.create({ data: { userId, roomId, role: "user", content: prompt } });
+
+        let fullResponse = "";
+            
         for await (const chunk of streamAIResponse(prompt)) {
             fullResponse +=chunk;
             res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
@@ -40,7 +50,8 @@ export const streamAiResponse = async (req: Request<{}, {}, AIRequest>, res: Res
         await prisma.aIMessage.create({ data: { userId, roomId, role: "ai", content: fullResponse } });
     } catch (error) {
         clearInterval(interval);
-        logger.error("AI Error : { error: error instanceof Error ? error.message : String(error) } ");
+        
+        logger.error("AI Error:", { error: error instanceof Error ? error.message : String(error) });
         res.write(`data: ${JSON.stringify({ error: "AI generation failed" })}\n\n`);
         res.end();
     }
