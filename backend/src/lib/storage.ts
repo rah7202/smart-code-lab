@@ -1,18 +1,28 @@
-import { Storage } from "@google-cloud/storage"
+import { Storage } from "@google-cloud/storage";
 
 const isTest = process.env.NODE_ENV === "test";
 
+// ✅ Create storage instance safely
 const storage = isTest
   ? null
-  : new Storage({
-      keyFilename: "./gcp-key.json",
-    });
+  : new Storage(
+      process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+        ? {
+            credentials: JSON.parse(
+              process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+            ),
+          }
+        : {
+            keyFilename: "./gcp-key.json", // fallback for local dev
+          }
+    );
 
 const bucket = isTest ? null : storage!.bucket("smart-code-lab");
 
+// ===================== UPLOAD =====================
 export const uploadCodeToGCS = async (code: string, roomId: string) => {
-  if (process.env.NODE_ENV === "test") {
-    return `rooms/${roomId}/mock.txt`; // ✅ fake path
+  if (isTest) {
+    return `rooms/${roomId}/mock.txt`; // ✅ test safe
   }
 
   const file = bucket!.file(`rooms/${roomId}/${Date.now()}.txt`);
@@ -21,12 +31,13 @@ export const uploadCodeToGCS = async (code: string, roomId: string) => {
     contentType: "text/plain",
   });
 
-  return file.name;
+  return file.name; // ✅ storing path, not URL
 };
 
+// ===================== GET =====================
 export const getCodeFromGCS = async (filePath: string) => {
-  if (process.env.NODE_ENV === "test") {
-    return "mock code"; // ✅ fake content
+  if (isTest) {
+    return "mock code"; // ✅ test safe
   }
 
   const file = bucket!.file(filePath);
