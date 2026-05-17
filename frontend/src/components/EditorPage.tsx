@@ -301,7 +301,7 @@ export default function EditorPage() {
             </div>
 
             <div className="border-t border-white/10 mt-2">
-                <Footer URL="https://github.com/goyalatwork007/smart-code-lab" size={22} />
+                <Footer URL="https://github.com/rah7202/smart-code-lab" size={22} />
             </div>
         </div>
     );
